@@ -1,0 +1,79 @@
+using SQLite;
+using LocalChat.Models;
+
+namespace LocalChat.Services;
+
+public class DatabaseService
+{
+    private readonly SQLiteAsyncConnection _database;
+    private readonly string _dbPath;
+
+    public DatabaseService()
+    {
+        _dbPath = Path.Combine(FileSystem.AppDataDirectory, "localchat.db3");
+        _database = new SQLiteAsyncConnection(_dbPath);
+        InitializeAsync().Wait(2000);
+    }
+
+    private async Task InitializeAsync()
+    {
+        await _database.CreateTableAsync<Peer>();
+        await _database.CreateTableAsync<Message>();
+        await _database.CreateTableAsync<AppSettings>();
+        await InitDefaultSettings();
+    }
+
+    private async Task InitDefaultSettings()
+    {
+        if (!await SettingExists(SettingsKeys.UserName))
+            await SetSetting(SettingsKeys.UserName, Environment.MachineName);
+        if (!await SettingExists(SettingsKeys.EncryptionPassword))
+            await SetSetting(SettingsKeys.EncryptionPassword, "default2026!");
+        if (!await SettingExists(SettingsKeys.TcpListenPort))
+            await SetSetting(SettingsKeys.TcpListenPort, "9000");
+        if (!await SettingExists(SettingsKeys.MulticastAddress))
+            await SetSetting(SettingsKeys.MulticastAddress, "239.0.0.1");
+        if (!await SettingExists(SettingsKeys.MulticastPort))
+            await SetSetting(SettingsKeys.MulticastPort, "8888");
+    }
+
+    public async Task<bool> SettingExists(string key)
+    {
+        var setting = await _database.FindAsync<AppSettings>(key);
+        return setting != null;
+    }
+
+    public async Task<string?> GetSetting(string key)
+    {
+        var setting = await _database.FindAsync<AppSettings>(key);
+        return setting?.Value;
+    }
+
+    public async Task SetSetting(string key, string value)
+    {
+        var existing = await _database.FindAsync<AppSettings>(key);
+        if (existing != null)
+        {
+            existing.Value = value;
+            await _database.UpdateAsync(existing);
+        }
+        else
+        {
+            await _database.InsertAsync(new AppSettings { Key = key, Value = value });
+        }
+    }
+
+    // --- Peers ---
+    public Task<List<Peer>> GetAllPeersAsync() => _database.Table<Peer>().ToListAsync();
+    public Task<int> SavePeerAsync(Peer peer) => _database.InsertOrReplaceAsync(peer);
+    public Task<int> DeletePeerAsync(Peer peer) => _database.DeleteAsync(peer);
+    public Task<Peer?> GetPeerByPeerIdAsync(string peerId) => _database.Table<Peer>().FirstOrDefaultAsync(p => p.PeerId == peerId);
+    public Task<int> UpdatePeerLastSeen(string peerId, DateTime lastSeen) =>
+        _database.ExecuteAsync("UPDATE Peers SET LastSeen = ? WHERE PeerId = ?", lastSeen, peerId);
+
+    // --- Messages ---
+    public Task<List<Message>> GetMessagesWithPeerAsync(string peerId) =>
+        _database.Table<Message>().Where(m => m.SenderPeerId == peerId || m.RecipientPeerId == peerId).OrderBy(m => m.Timestamp).ToListAsync();
+    public Task<int> SaveMessageAsync(Message message) => _database.InsertAsync(message);
+    public Task<int> DeleteAllMessagesAsync() => _database.DeleteAllAsync<Message>();
+}

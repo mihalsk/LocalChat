@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LocalChat.Views.SettingsPage"
+             Title="Settings">
+    <VerticalStackLayout Spacing="15" Padding="20">
+        <Entry Placeholder="User Name" Text="{Binding UserName}"/>
+        <Entry Placeholder="Encryption Password" Text="{Binding EncryptionPassword}" IsPassword="True"/>
+        <Entry Placeholder="TCP Port" Text="{Binding TcpPort}" Keyboard="Numeric"/>
+        <Entry Placeholder="Multicast Address" Text="{Binding MulticastAddress}"/>
+        <Entry Placeholder="Multicast Port" Text="{Binding MulticastPort}" Keyboard="Numeric"/>
+        <Button Text="Save" Command="{Binding SaveCommand}" BackgroundColor="Green"/>
+    </VerticalStackLayout>
+</ContentPage>

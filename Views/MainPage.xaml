@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LocalChat.Views.MainPage"
+             xmlns:local="clr-namespace:LocalChat.Views"
+             Title="Local Chat">
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <Grid ColumnDefinitions="*,Auto" Grid.Row="0" Padding="10">
+            <Label Text="{Binding StatusText}" VerticalOptions="Center"/>
+            <Button Grid.Column="1" Text="⚙️ Settings" Command="{Binding NavigateToSettingsCommand}" 
+                    HorizontalOptions="End"/>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="0.4*,0.6*">
+             Список пиров 
+            <ListView x:Name="PeersListView" ItemsSource="{Binding Peers}" 
+                      SelectedItem="{Binding SelectedPeer}"
+                      SelectionMode="Single">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <TextCell Text="{Binding Name}" Detail="{Binding IpAddress}"/>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+             Область чата 
+            <Grid ColumnDefinitions="*" RowDefinitions="*,Auto">
+                <CollectionView ItemsSource="{Binding Messages}" Grid.Row="0">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <StackLayout Margin="5">
+                                <Label Text="{Binding Content}" 
+                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource sentAlignment}}"
+                                       BackgroundColor="{Binding IsSentByMe, Converter={StaticResource sentColor}}"
+                                       Padding="10"/>
+                                <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm}'}" 
+                                       FontSize="10" 
+                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource sentAlignment}}"/>
+                            </StackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Padding="5">
+                    <Entry Text="{Binding NewMessageText}" Placeholder="Type message..." 
+                           HorizontalOptions="FillAndExpand"/>
+                    <Button Grid.Column="1" Text="Send" Command="{Binding SendMessageCommand}"/>
+                    <Button Grid.Column="2" Text="📎" Command="{Binding SendFileCommand}" WidthRequest="50"/>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <Button Grid.Row="2" Text="Refresh Peers" Command="{Binding RefreshPeersCommand}" Margin="10"/>
+    </Grid>
+</ContentPage>
