@@ -54,7 +54,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _discovery.PeerDiscovered += OnPeerDiscovered;
         _tcpComm.MessageReceived += OnMessageReceived;
 
-        // Асинхронная инициализация без блокировки UI
         Task.Run(InitializeAsync);
     }
 
@@ -62,43 +61,48 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         try
         {
-            StatusText = "Initializing database...";
+            await UpdateStatus("Initializing database...");
             await _dbService.InitializeAsync();
 
-            StatusText = "Loading network settings...";
+            await UpdateStatus("Loading network settings...");
             await _discovery.InitializeAsync();
             await _tcpComm.InitializeAsync();
 
-            StatusText = "Loading peers...";
+            await UpdateStatus("Loading peers...");
             await LoadPeersAsync();
 
-            StatusText = "Starting network services...";
+            await UpdateStatus("Starting network services...");
             await _discovery.StartAsync();
             await _tcpComm.StartServerAsync();
 
-            StatusText = "Online";
+            await UpdateStatus("Online");
         }
         catch (Exception ex)
         {
-            StatusText = $"Init error: {ex.Message}";
+            await UpdateStatus($"Init error: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"Init error: {ex}");
         }
+    }
+
+    private async Task UpdateStatus(string status)
+    {
+        await (Application.Current?.Dispatcher?.DispatchAsync(() => StatusText = status) ?? Task.CompletedTask);
     }
 
     private async Task LoadPeersAsync()
     {
         var list = await _dbService.GetAllPeersAsync();
-        await MainThread.InvokeOnMainThreadAsync(() =>
+        await (Application.Current?.Dispatcher?.DispatchAsync(() =>
         {
             Peers.Clear();
             foreach (var peer in list.OrderByDescending(p => p.LastSeen))
                 Peers.Add(peer);
-        });
+        }) ?? Task.CompletedTask);
     }
 
     private void OnPeerDiscovered(Peer peer)
     {
-        MainThread.BeginInvokeOnMainThread(async () =>
+        Application.Current?.Dispatcher?.DispatchAsync(async () =>
         {
             if (!Peers.Any(p => p.PeerId == peer.PeerId))
                 Peers.Add(peer);
@@ -115,11 +119,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task OnMessageReceived(Message message)
     {
-        await MainThread.InvokeOnMainThreadAsync(() =>
+        await (Application.Current?.Dispatcher?.DispatchAsync(() =>
         {
             Messages.Add(message);
             StatusText = $"New message from {message.SenderPeerId}";
-        });
+        }) ?? Task.CompletedTask);
     }
 
     private async Task SendMessageAsync()
@@ -138,7 +142,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 IsSentByMe = true
             };
             await _dbService.SaveMessageAsync(msg);
-            await MainThread.InvokeOnMainThreadAsync(() => Messages.Add(msg));
+            await (Application.Current?.Dispatcher?.DispatchAsync(() => Messages.Add(msg)) ?? Task.CompletedTask);
             NewMessageText = string.Empty;
         }
         finally { IsBusy = false; }
@@ -155,9 +159,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             });
             if (result == null) return;
             await _fileTransfer.SendFileAsync(SelectedPeer, result.FullPath);
-            StatusText = $"File sent to {SelectedPeer.Name}";
+            await UpdateStatus($"File sent to {SelectedPeer.Name}");
         }
-        catch (Exception ex) { StatusText = $"Error: {ex.Message}"; }
+        catch (Exception ex) { await UpdateStatus($"Error: {ex.Message}"); }
     }
 
     private async Task RefreshPeersAsync() => await LoadPeersAsync();
