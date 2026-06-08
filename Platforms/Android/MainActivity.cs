@@ -22,8 +22,9 @@ public class MainActivity : MauiAppCompatActivity
                 RequestPermissions(new[] { Android.Manifest.Permission.PostNotifications }, 0);
             }
             NotificationHelper.CreateNotificationChannel(this);//////////////////
-            StartForegroundService();
+            
         }
+        StartForegroundService();
     }
 
     private void StartForegroundService()

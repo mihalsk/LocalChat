@@ -2,55 +2,41 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="LocalChat.Views.MainPage"
-             xmlns:local="clr-namespace:LocalChat.Views"
-             Title="Local Chat">
-    <Grid RowDefinitions="Auto,*,Auto">
-
-        <Grid ColumnDefinitions="*,Auto" Grid.Row="0" Padding="10">
-            <Label Text="{Binding StatusText}" VerticalOptions="Center"/>
-            <Button Grid.Column="1" Text="⚙️ Settings" Command="{Binding NavigateToSettingsCommand}" 
-                    HorizontalOptions="End"/>
-        </Grid>
-
-        <Grid Grid.Row="1" ColumnDefinitions="0.4*,0.6*">
-             Список пиров 
-            <ListView x:Name="PeersListView" ItemsSource="{Binding Peers}" 
+             Title="Local Chat" Padding="0">
+    <Grid RowDefinitions="0.05*,0.75*,0.1*,0.1*" ColumnDefinitions="0.68*,0.16*,0.16*" Padding="0">
+        <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" BackgroundColor="Aqua" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
+        <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" BackgroundColor="Aqua" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
+        <!-- Список пиров -->
+        <ListView Grid.Row="1" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Peers}" BackgroundColor="DarkBlue" 
                       SelectedItem="{Binding SelectedPeer}"
                       SelectionMode="Single">
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <TextCell Text="{Binding Name}" Detail="{Binding IpAddress}"/>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <TextCell TextColor="White" Text="{Binding Name}" Detail="{Binding IpAddress}"/>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+        <!-- Область чата -->
+        <CollectionView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" ItemsSource="{Binding Messages}" BackgroundColor="White">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <StackLayout Margin="5">
+                        <Label Text="{Binding Content}"
+                                Padding="10"
+                                HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"
+                                BackgroundColor="{Binding IsSentByMe, Converter={StaticResource BoolToColor}}"/>
+                        <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm}'}" 
+                                FontSize="10" 
+                                HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"/>
+                    </StackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
 
-             Область чата 
-            <Grid ColumnDefinitions="*" RowDefinitions="*,Auto">
-                <CollectionView ItemsSource="{Binding Messages}" Grid.Row="0">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate>
-                            <StackLayout Margin="5">
-                                <Label Text="{Binding Content}" 
-                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource sentAlignment}}"
-                                       BackgroundColor="{Binding IsSentByMe, Converter={StaticResource sentColor}}"
-                                       Padding="10"/>
-                                <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm}'}" 
-                                       FontSize="10" 
-                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource sentAlignment}}"/>
-                            </StackLayout>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Padding="5">
-                    <Entry Text="{Binding NewMessageText}" Placeholder="Type message..." 
-                           HorizontalOptions="FillAndExpand"/>
-                    <Button Grid.Column="1" Text="Send" Command="{Binding SendMessageCommand}"/>
-                    <Button Grid.Column="2" Text="📎" Command="{Binding SendFileCommand}" WidthRequest="50"/>
-                </Grid>
-            </Grid>
-        </Grid>
-
-        <Button Grid.Row="2" Text="Refresh Peers" Command="{Binding RefreshPeersCommand}" Margin="10"/>
+        <Entry Grid.Row="3" Grid.Column="0" Text="{Binding NewMessageText}" Placeholder="Type message..." BackgroundColor="LightGray"
+                HorizontalOptions="FillAndExpand"/>
+        <Button Grid.Row="3" Grid.Column="1" Margin="5" Text="👈" TextColor="White" Command="{Binding SendMessageCommand}"/>
+        <Button Grid.Row="3" Grid.Column="2" Margin="5" Text="📎" TextColor="White" Command="{Binding SendFileCommand}"/>
+        <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="" Command="{Binding RefreshPeersCommand}"/>
     </Grid>
 </ContentPage>

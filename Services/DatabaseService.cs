@@ -7,20 +7,32 @@ public class DatabaseService
 {
     private readonly SQLiteAsyncConnection _database;
     private readonly string _dbPath;
+    private bool _initialized = false;
 
     public DatabaseService()
     {
         _dbPath = Path.Combine(FileSystem.AppDataDirectory, "localchat.db3");
         _database = new SQLiteAsyncConnection(_dbPath);
-        InitializeAsync().Wait(2000);
     }
 
-    private async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
-        await _database.CreateTableAsync<Peer>();
-        await _database.CreateTableAsync<Message>();
-        await _database.CreateTableAsync<AppSettings>();
+        if (_initialized) return;
+
+        try
+        {
+            await _database.CreateTableAsync<Peer>();
+            await _database.CreateTableAsync<Message>();
+            await _database.CreateTableAsync<AppSettings>();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Table creation error: {ex}");
+            throw;
+        }
         await InitDefaultSettings();
+
+        _initialized = true;
     }
 
     private async Task InitDefaultSettings()
@@ -32,7 +44,7 @@ public class DatabaseService
         if (!await SettingExists(SettingsKeys.TcpListenPort))
             await SetSetting(SettingsKeys.TcpListenPort, "9000");
         if (!await SettingExists(SettingsKeys.MulticastAddress))
-            await SetSetting(SettingsKeys.MulticastAddress, "239.0.0.1");
+            await SetSetting(SettingsKeys.MulticastAddress, "224.1.7.1");
         if (!await SettingExists(SettingsKeys.MulticastPort))
             await SetSetting(SettingsKeys.MulticastPort, "8888");
     }

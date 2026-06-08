@@ -10,20 +10,32 @@ public class TcpCommunicationService
 {
     private readonly DatabaseService _dbService;
     private readonly EncryptionService _encryption;
-    private readonly int _listenPort;
+    private int _listenPort;
     private TcpListener? _listener;
     private CancellationTokenSource? _listenerCts;
+    private bool _initialized = false;
+
     public event Func<Message, Task>? MessageReceived;
 
     public TcpCommunicationService(DatabaseService dbService, EncryptionService encryption)
     {
         _dbService = dbService;
         _encryption = encryption;
-        _listenPort = int.Parse(_dbService.GetSetting(SettingsKeys.TcpListenPort).Result ?? "9000");
+        _listenPort = 9000; // временное значение
+    }
+
+    public async Task InitializeAsync()
+    {
+        if (_initialized) return;
+        _listenPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
+        _initialized = true;
     }
 
     public async Task StartServerAsync()
     {
+        if (!_initialized)
+            await InitializeAsync();
+
         _listenerCts = new CancellationTokenSource();
         _listener = new TcpListener(IPAddress.Any, _listenPort);
         _listener.Start();
@@ -84,7 +96,7 @@ public class TcpCommunicationService
                 MessageReceived?.Invoke(message);
             }
         }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Decrypt error: {ex}"); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"HandleClient error: {ex}"); }
     }
 
     public async Task SendMessageAsync(Peer recipient, string content, bool isFileMessage = false, string? originalFileName = null)
@@ -101,7 +113,7 @@ public class TcpCommunicationService
         };
         var json = JsonSerializer.Serialize(dto);
         var data = Encoding.UTF8.GetBytes(json);
-        
+
         using var client = new TcpClient();
         await client.ConnectAsync(recipient.IpAddress, recipient.TcpPort);
         await using var stream = client.GetStream();

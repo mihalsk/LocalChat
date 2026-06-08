@@ -1,3 +1,5 @@
+using LocalChat.ViewModels;
+
 namespace LocalChat;
 
 public partial class App : Application
@@ -9,7 +11,9 @@ public partial class App : Application
         InitializeComponent();
         PeerId = Preferences.Get("PeerId", Guid.NewGuid().ToString());
         Preferences.Set("PeerId", PeerId);
-        MainPage = new NavigationPage(new Views.MainPage(
-            MauiProgram.CreateMauiApp().Services.GetRequiredService<ViewModels.MainViewModel>()));
+
+        // Получаем MainViewModel через DI и создаём MainPage
+        var mainViewModel = MauiProgram.CreateMauiApp().Services.GetRequiredService<MainViewModel>();
+        MainPage = new NavigationPage(new Views.MainPage(mainViewModel));
     }
 }
