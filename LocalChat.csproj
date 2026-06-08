@@ -68,6 +68,7 @@
   <ItemGroup>
     <MauiXaml Remove="AppShell.xaml" />
     <MauiXaml Remove="Resources\Styles\Styles — копия.xaml" />
+    <MauiXaml Remove="Resources\Styles\Styles---.xaml" />
   </ItemGroup>
 
   <ItemGroup>
