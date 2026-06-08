@@ -10,7 +10,6 @@ public class AppSettings
     public string Value { get; set; } = string.Empty;
 }
 
-// Вспомогательный класс для доступа
 public static class SettingsKeys
 {
     public const string UserName = "UserName";

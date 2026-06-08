@@ -50,6 +50,7 @@ public partial class SettingsViewModel : ObservableObject
         await _dbService.SetSetting(SettingsKeys.TcpListenPort, TcpPort);
         await _dbService.SetSetting(SettingsKeys.MulticastAddress, MulticastAddress);
         await _dbService.SetSetting(SettingsKeys.MulticastPort, MulticastPort);
-        await Application.Current!.MainPage!.DisplayAlert("Settings", "Saved. Restart app for changes.", "OK");
+        await Application.Current!.Windows[0].Page!.DisplayAlertAsync("Settings", "Saved. Restart app for changes.", "OK"); //MainPage
+
     }
 }

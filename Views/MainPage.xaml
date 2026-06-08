@@ -2,19 +2,16 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="LocalChat.Views.MainPage"
-             xmlns:local="clr-namespace:LocalChat.Views"
              Title="Local Chat">
     <Grid RowDefinitions="Auto,*,Auto">
 
-        <Grid ColumnDefinitions="*,Auto" Grid.Row="0" Padding="10">
-            <Label Text="{Binding StatusText}" VerticalOptions="Center"/>
-            <Button Grid.Column="1" Text="⚙️ Settings" Command="{Binding NavigateToSettingsCommand}" 
-                    HorizontalOptions="End"/>
+        <Grid Grid.Row="0" Padding="10">
+            <Label Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="0.4*,0.6*">
-             Список пиров 
-            <ListView x:Name="PeersListView" ItemsSource="{Binding Peers}" 
+            <!-- Список пиров -->
+            <ListView ItemsSource="{Binding Peers}" 
                       SelectedItem="{Binding SelectedPeer}"
                       SelectionMode="Single">
                 <ListView.ItemTemplate>
@@ -24,25 +21,25 @@
                 </ListView.ItemTemplate>
             </ListView>
 
-             Область чата 
+            <!-- Область чата -->
             <Grid ColumnDefinitions="*" RowDefinitions="*,Auto">
                 <CollectionView ItemsSource="{Binding Messages}" Grid.Row="0">
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
                             <StackLayout Margin="5">
-                                <Label Text="{Binding Content}" 
-                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource sentAlignment}}"
-                                       BackgroundColor="{Binding IsSentByMe, Converter={StaticResource sentColor}}"
-                                       Padding="10"/>
+                                <Label Text="{Binding Content}"
+                                       Padding="10"
+                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"
+                                       BackgroundColor="{Binding IsSentByMe, Converter={StaticResource BoolToColor}}"/>
                                 <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm}'}" 
                                        FontSize="10" 
-                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource sentAlignment}}"/>
+                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"/>
                             </StackLayout>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Padding="5">
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Padding="5">
                     <Entry Text="{Binding NewMessageText}" Placeholder="Type message..." 
                            HorizontalOptions="FillAndExpand"/>
                     <Button Grid.Column="1" Text="Send" Command="{Binding SendMessageCommand}"/>

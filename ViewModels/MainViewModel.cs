@@ -53,24 +53,47 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _discovery.PeerDiscovered += OnPeerDiscovered;
         _tcpComm.MessageReceived += OnMessageReceived;
-        
+
+        // Асинхронная инициализация без блокировки UI
         Task.Run(InitializeAsync);
     }
 
     private async Task InitializeAsync()
     {
-        await LoadPeersAsync();
-        await _discovery.StartAsync();
-        await _tcpComm.StartServerAsync();
-        StatusText = "Online";
+        try
+        {
+            StatusText = "Initializing database...";
+            await _dbService.InitializeAsync();
+
+            StatusText = "Loading network settings...";
+            await _discovery.InitializeAsync();
+            await _tcpComm.InitializeAsync();
+
+            StatusText = "Loading peers...";
+            await LoadPeersAsync();
+
+            StatusText = "Starting network services...";
+            await _discovery.StartAsync();
+            await _tcpComm.StartServerAsync();
+
+            StatusText = "Online";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Init error: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"Init error: {ex}");
+        }
     }
 
     private async Task LoadPeersAsync()
     {
         var list = await _dbService.GetAllPeersAsync();
-        Peers.Clear();
-        foreach (var peer in list.OrderByDescending(p => p.LastSeen))
-            Peers.Add(peer);
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            Peers.Clear();
+            foreach (var peer in list.OrderByDescending(p => p.LastSeen))
+                Peers.Add(peer);
+        });
     }
 
     private void OnPeerDiscovered(Peer peer)
@@ -115,7 +138,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 IsSentByMe = true
             };
             await _dbService.SaveMessageAsync(msg);
-            Messages.Add(msg);
+            await MainThread.InvokeOnMainThreadAsync(() => Messages.Add(msg));
             NewMessageText = string.Empty;
         }
         finally { IsBusy = false; }

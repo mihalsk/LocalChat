@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using CommunityToolkit.Mvvm.Messaging;
 using LocalChat.Models;
 
 namespace LocalChat.Services;
@@ -10,38 +9,52 @@ namespace LocalChat.Services;
 public class NetworkDiscoveryService : IDisposable
 {
     private readonly DatabaseService _dbService;
-    private readonly string _multicastAddress;
-    private readonly int _multicastPort;
-    private readonly int _tcpPort;
-    private readonly string _userName;
+    private string _multicastAddress;
+    private int _multicastPort;
+    private int _tcpPort;
+    private string _userName;
     private UdpClient? _udpClient;
     private Timer? _heartbeatTimer;
     private CancellationTokenSource? _listenerCts;
     private bool _disposed;
+    private bool _initialized = false;
 
     public event Action<Peer>? PeerDiscovered;
 
     public NetworkDiscoveryService(DatabaseService dbService)
     {
         _dbService = dbService;
-        _multicastAddress = _dbService.GetSetting(SettingsKeys.MulticastAddress).Result ?? "224.0.0.1";
-        _multicastPort = int.Parse(_dbService.GetSetting(SettingsKeys.MulticastPort).Result ?? "8888");
-        _tcpPort = int.Parse(_dbService.GetSetting(SettingsKeys.TcpListenPort).Result ?? "9000");
-        _userName = _dbService.GetSetting(SettingsKeys.UserName).Result ?? Environment.MachineName;
+        // Временные значения по умолчанию, будут заменены при инициализации
+        _multicastAddress = "239.0.0.1";
+        _multicastPort = 8888;
+        _tcpPort = 9000;
+        _userName = Environment.MachineName;
+    }
+
+    public async Task InitializeAsync()
+    {
+        if (_initialized) return;
+
+        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? "239.0.0.1";
+        _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? "8888");
+        _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
+        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? Environment.MachineName;
+
+        _initialized = true;
     }
 
     public async Task StartAsync()
     {
+        if (!_initialized)
+            await InitializeAsync();
+
         _listenerCts = new CancellationTokenSource();
         _udpClient = new UdpClient();
         _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
         _udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
         _udpClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
-        
-        // Запуск прослушивания
+
         _ = Task.Run(() => ListenForHeartbeatsAsync(_listenerCts.Token));
-        
-        // Периодическая отправка heartbeat
         _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
     }
 
@@ -88,9 +101,9 @@ public class NetworkDiscoveryService : IDisposable
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
                 if (root.GetProperty("Type").GetString() != "heartbeat") continue;
-                
+
                 var peerId = root.GetProperty("PeerId").GetString();
-                if (peerId == App.PeerId) continue; // игнорируем себя
+                if (peerId == App.PeerId) continue;
 
                 var peer = new Peer
                 {
@@ -100,13 +113,13 @@ public class NetworkDiscoveryService : IDisposable
                     TcpPort = root.GetProperty("TcpPort").GetInt32(),
                     LastSeen = root.GetProperty("Timestamp").GetDateTime()
                 };
-                
+
                 var existing = await _dbService.GetPeerByPeerIdAsync(peer.PeerId);
                 if (existing == null)
                     await _dbService.SavePeerAsync(peer);
                 else
                     await _dbService.UpdatePeerLastSeen(peer.PeerId, peer.LastSeen);
-                
+
                 PeerDiscovered?.Invoke(peer);
             }
             catch (OperationCanceledException) { break; }
