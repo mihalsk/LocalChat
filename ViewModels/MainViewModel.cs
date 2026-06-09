@@ -15,6 +15,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly FileTransferService _fileTransfer;
     private readonly EncryptionService _encryption;
 
+    private Timer? _onlineStatusTimer;
+
     [ObservableProperty]
     private ObservableCollection<Peer> _peers = new();
 
@@ -47,12 +49,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _fileTransfer = fileTransfer;
         _encryption = encryption;
 
+
+
         SendMessageCommand = new AsyncRelayCommand(SendMessageAsync);
         SendFileCommand = new AsyncRelayCommand(SendFileAsync);
         RefreshPeersCommand = new AsyncRelayCommand(RefreshPeersAsync);
 
         _discovery.PeerDiscovered += OnPeerDiscovered;
         _tcpComm.MessageReceived += OnMessageReceived;
+
+        _onlineStatusTimer = new Timer(UpdateOnlineStatus, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
         Task.Run(InitializeAsync);
     }
@@ -90,6 +96,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
         await (Application.Current?.Dispatcher?.DispatchAsync(() => StatusText = status) ?? Task.CompletedTask);
     }
 
+    private void UpdateOnlineStatus(object? state)
+    {
+        Application.Current?.Dispatcher?.DispatchAsync(() =>
+        {
+            foreach (var peer in Peers)
+            {
+                peer.RefreshOnlineStatus();
+            }
+        });
+    }
+
     private async Task LoadPeersAsync()
     {
         var list = await _dbService.GetAllPeersAsync();
@@ -103,18 +120,25 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void OnPeerDiscovered(Peer peer)
     {
-        Application.Current?.Dispatcher?.DispatchAsync(async () =>
+        Application.Current?.Dispatcher?.DispatchAsync(() =>
         {
-            if (!Peers.Any(p => p.PeerId == peer.PeerId))
+            var existing = Peers.FirstOrDefault(p => p.PeerId == peer.PeerId);
+            if (existing == null)
+            {
                 Peers.Add(peer);
+            }
             else
             {
-                var existing = Peers.First(p => p.PeerId == peer.PeerId);
-                existing.LastSeen = peer.LastSeen; //DateTime.Now; // 
+                // Обновляем существующий объект – тогда UI тоже обновится
                 existing.Name = peer.Name;
                 existing.IpAddress = peer.IpAddress;
+                existing.TcpPort = peer.TcpPort;
+                existing.LastSeen = peer.LastSeen;
             }
-            await LoadPeersAsync(); // обновить порядок
+            // При желании пересортировать список:
+            // var sorted = Peers.OrderByDescending(p => p.LastSeen).ToList();
+            // Peers.Clear();
+            // foreach (var p in sorted) Peers.Add(p);
         });
     }
 
@@ -173,5 +197,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _tcpComm.MessageReceived -= OnMessageReceived;
         _discovery.StopAsync().Wait();
         _tcpComm.StopServerAsync().Wait();
+        _onlineStatusTimer?.Dispose();
     }
 }
