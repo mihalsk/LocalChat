@@ -1,8 +1,9 @@
+using LocalChat.Models;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using LocalChat.Models;
 
 namespace LocalChat.Services;
 
@@ -76,7 +77,17 @@ public class NetworkDiscoveryService : IDisposable
         }
 
         if (_udpClients.Count == 0)
-            throw new Exception("Could not bind multicast on any network interface");
+        {
+            // Последняя попытка: привязываемся к любому интерфейсу
+            var fallbackClient = new UdpClient();
+            fallbackClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            fallbackClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
+            fallbackClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
+            _udpClients.Add(fallbackClient);
+            if (_udpClients.Count == 0) // strange decision 
+                throw new Exception("Could not bind multicast on any network interface");
+        }
+        
 
         foreach (var client in _udpClients)
         {
@@ -173,18 +184,45 @@ public class NetworkDiscoveryService : IDisposable
 
     private List<IPAddress> GetLocalIpAddresses()
     {
+        var addresses = new List<IPAddress>();
+
+        // Способ 1: через Dns (работает на Windows, может не работать на Android)
         try
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
-            return host.AddressList
+            addresses.AddRange(host.AddressList
                 .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
-                .Where(ip => !ip.ToString().StartsWith("169.254.")) // исключаем APIPA (автоназначенные)
-                .ToList();
+                .Where(ip => !ip.ToString().StartsWith("169.254.")));
         }
-        catch
+        catch { /* игнорируем */ }
+
+        // Способ 2: перебор сетевых интерфейсов (обязателен для Android)
+        try
         {
-            return new List<IPAddress>();
+            var interfaces = NetworkInterface.GetAllNetworkInterfaces();
+            foreach (var ni in interfaces)
+            {
+                // Только активные интерфейсы
+                if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                // Исключаем loopback
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+
+                var props = ni.GetIPProperties();
+                foreach (var addr in props.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == AddressFamily.InterNetwork &&
+                        !IPAddress.IsLoopback(addr.Address) &&
+                        !addr.Address.ToString().StartsWith("169.254."))
+                    {
+                        addresses.Add(addr.Address);
+                    }
+                }
+            }
         }
+        catch { /* игнорируем */ }
+
+        // Убираем дубликаты
+        return addresses.Distinct().ToList();
     }
 
     public void Dispose()
