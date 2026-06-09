@@ -44,7 +44,7 @@ public class DatabaseService
         if (!await SettingExists(SettingsKeys.TcpListenPort))
             await SetSetting(SettingsKeys.TcpListenPort, "9000");
         if (!await SettingExists(SettingsKeys.MulticastAddress))
-            await SetSetting(SettingsKeys.MulticastAddress, "239.0.0.");
+            await SetSetting(SettingsKeys.MulticastAddress, "239.0.0.1");
         if (!await SettingExists(SettingsKeys.MulticastPort))
             await SetSetting(SettingsKeys.MulticastPort, "9988");
     }
@@ -81,7 +81,7 @@ public class DatabaseService
     public Task<int> DeletePeerAsync(Peer peer) => _database.DeleteAsync(peer);
     public Task<Peer?> GetPeerByPeerIdAsync(string peerId) => _database.Table<Peer>().FirstOrDefaultAsync(p => p.PeerId == peerId);
     public Task<int> UpdatePeerLastSeen(string peerId, DateTime lastSeen) =>
-        _database.ExecuteAsync("UPDATE Peers SET LastSeen = ? WHERE PeerId = ?", lastSeen, peerId);
+        _database.ExecuteAsync("UPDATE Peers SET LastSeen = ? WHERE PeerId = ?", lastSeen, peerId); //lastSeen
 
     // --- Messages ---
     public Task<List<Message>> GetMessagesWithPeerAsync(string peerId) =>

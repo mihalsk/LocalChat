@@ -75,7 +75,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
             await _discovery.StartAsync();
             await _tcpComm.StartServerAsync();
 
-            await UpdateStatus("Online");
+            await UpdateStatus($"Online:{await _dbService.GetSetting(SettingsKeys.MulticastAddress)}:" +
+                $"{await _dbService.GetSetting(SettingsKeys.MulticastPort)},{await _dbService.GetSetting(SettingsKeys.TcpListenPort)}");
         }
         catch (Exception ex)
         {
@@ -109,7 +110,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             else
             {
                 var existing = Peers.First(p => p.PeerId == peer.PeerId);
-                existing.LastSeen = peer.LastSeen;
+                existing.LastSeen = peer.LastSeen; //DateTime.Now; // 
                 existing.Name = peer.Name;
                 existing.IpAddress = peer.IpAddress;
             }
@@ -128,7 +129,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task SendMessageAsync()
     {
-        if (string.IsNullOrWhiteSpace(NewMessageText) || SelectedPeer == null) return;
+        if (string.IsNullOrWhiteSpace(NewMessageText) || SelectedPeer == null || !SelectedPeer.IsOnline) return;
         IsBusy = true;
         try
         {
@@ -150,7 +151,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task SendFileAsync()
     {
-        if (SelectedPeer == null) return;
+        if (SelectedPeer == null || !SelectedPeer.IsOnline) return;
         try
         {
             var result = await FilePicker.PickAsync(new PickOptions

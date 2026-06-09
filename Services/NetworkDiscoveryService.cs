@@ -1,8 +1,8 @@
-using LocalChat.Models;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using LocalChat.Models;
 
 namespace LocalChat.Services;
 
@@ -24,7 +24,7 @@ public class NetworkDiscoveryService : IDisposable
     public NetworkDiscoveryService(DatabaseService dbService)
     {
         _dbService = dbService;
-        _multicastAddress = "224.0.0.252";
+        _multicastAddress = "239.0.0.1";
         _multicastPort = 8888;
         _tcpPort = 9000;
         _userName = Environment.MachineName;
@@ -34,7 +34,7 @@ public class NetworkDiscoveryService : IDisposable
     {
         if (_initialized) return;
 
-        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? "224.0.0.252";
+        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? "239.0.0.1";
         _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? "8888");
         _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
         _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? Environment.MachineName;
@@ -49,13 +49,13 @@ public class NetworkDiscoveryService : IDisposable
 
         _listenerCts = new CancellationTokenSource();
 
-        // Получаем все локальные IPv4-адреса (не loopback)
         var localIps = GetLocalIpAddresses();
-        System.Diagnostics.Debug.WriteLine($"localIps {string.Join(", ", localIps)}");
         if (!localIps.Any())
         {
             throw new Exception("No suitable network interface found for multicast.");
         }
+
+        var multicastGroup = IPAddress.Parse(_multicastAddress);
 
         foreach (var localIp in localIps)
         {
@@ -64,13 +64,13 @@ public class NetworkDiscoveryService : IDisposable
                 var udpClient = new UdpClient();
                 udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                 udpClient.Client.Bind(new IPEndPoint(localIp, _multicastPort));
-                udpClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress), localIp);
+                udpClient.JoinMulticastGroup(multicastGroup, localIp);
                 _udpClients.Add(udpClient);
                 System.Diagnostics.Debug.WriteLine($"Multicast listener on {localIp}:{_multicastPort}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to bind multicast on {localIp}: {ex.Message} {ex.StackTrace.ToString()}");
+                System.Diagnostics.Debug.WriteLine($"Failed to bind multicast on {localIp}: {ex.Message}");
                 // Продолжаем с другими интерфейсами
             }
         }
@@ -78,7 +78,6 @@ public class NetworkDiscoveryService : IDisposable
         if (_udpClients.Count == 0)
             throw new Exception("Could not bind multicast on any network interface");
 
-        // Запуск прослушивания на всех клиентах
         foreach (var client in _udpClients)
         {
             _ = Task.Run(() => ListenForHeartbeatsAsync(client, _listenerCts.Token));
@@ -106,7 +105,6 @@ public class NetworkDiscoveryService : IDisposable
             var localIps = GetLocalIpAddresses();
             if (!localIps.Any()) return;
 
-            // Отправляем heartbeat с первым доступным IP
             var localIp = localIps.First().ToString();
 
             var heartbeat = new
@@ -122,14 +120,12 @@ public class NetworkDiscoveryService : IDisposable
             var data = Encoding.UTF8.GetBytes(json);
             var endpoint = new IPEndPoint(IPAddress.Parse(_multicastAddress), _multicastPort);
 
-            // Отправляем через первый активный UdpClient
             if (_udpClients.Count > 0)
             {
                 await _udpClients[0].SendAsync(data, data.Length, endpoint);
             }
             else
             {
-                // Fallback: временный клиент для отправки
                 using var tempClient = new UdpClient();
                 tempClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
                 await tempClient.SendAsync(data, data.Length, endpoint);
@@ -177,10 +173,18 @@ public class NetworkDiscoveryService : IDisposable
 
     private List<IPAddress> GetLocalIpAddresses()
     {
-        var host = Dns.GetHostEntry(Dns.GetHostName());
-        return host.AddressList
-            .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
-            .ToList();
+        try
+        {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            return host.AddressList
+                .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
+                .Where(ip => !ip.ToString().StartsWith("169.254.")) // исключаем APIPA (автоназначенные)
+                .ToList();
+        }
+        catch
+        {
+            return new List<IPAddress>();
+        }
     }
 
     public void Dispose()

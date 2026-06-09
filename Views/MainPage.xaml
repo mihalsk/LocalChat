@@ -1,21 +1,37 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             
              x:Class="LocalChat.Views.MainPage"
              Title="Local Chat" Padding="0">
     <Grid RowDefinitions="0.05*,0.75*,0.1*,0.1*" ColumnDefinitions="0.68*,0.16*,0.16*" Padding="0">
         <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" TextColor="White" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
         <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" TextColor="White" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
         <!-- Список пиров -->
-        <ListView Grid.Row="1" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Peers}" BackgroundColor="DarkBlue" 
+        <CollectionView Grid.Row="1" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Peers}" BackgroundColor="DarkBlue" 
                       SelectedItem="{Binding SelectedPeer}"
                       SelectionMode="Single">
-            <ListView.ItemTemplate>
+            <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <TextCell TextColor="White" Text="{Binding Name}" Detail="{Binding IpAddress}"/>
+                    <StackLayout Orientation="Vertical">
+                        <Label TextColor="Gray" Text="{Binding Name}">
+                            <!-- ELSE: Default value -->
+
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsOnline}" Value="True">
+                                    <Setter Property="TextColor" Value="Lime" />
+                                </DataTrigger>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsOnline}" Value="False">
+                                    <Setter Property="TextColor" Value="Gray" />
+                                </DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+                        <Label Text="{Binding IpAddress}" TextColor="Gray"></Label>
+                    </StackLayout>
                 </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+            </CollectionView.ItemTemplate>
+            
+        </CollectionView>
         <!-- Область чата -->
         <CollectionView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" ItemsSource="{Binding Messages}" BackgroundColor="White">
             <CollectionView.ItemTemplate>
