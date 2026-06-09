@@ -10,7 +10,8 @@ public class TcpCommunicationService
 {
     private readonly DatabaseService _dbService;
     private readonly EncryptionService _encryption;
-    private int _listenPort;
+    private int _configuredPort;
+    private int _actualListenPort;
     private TcpListener? _listener;
     private CancellationTokenSource? _listenerCts;
     private bool _initialized = false;
@@ -21,14 +22,37 @@ public class TcpCommunicationService
     {
         _dbService = dbService;
         _encryption = encryption;
-        _listenPort = 9000; // временное значение
+        _configuredPort = 9000;
+        _actualListenPort = 0;
     }
 
     public async Task InitializeAsync()
     {
         if (_initialized) return;
-        _listenPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
+        _configuredPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
         _initialized = true;
+    }
+
+    /// <summary>
+    /// Поиск свободного порта, начиная с заданного
+    /// </summary>
+    private async Task<int> FindFreePortAsync(int startPort, int maxAttempts = 100)
+    {
+        for (int port = startPort; port < startPort + maxAttempts; port++)
+        {
+            try
+            {
+                var tempListener = new TcpListener(IPAddress.Any, port);
+                tempListener.Start();
+                tempListener.Stop();
+                return port; // порт свободен
+            }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+            {
+                continue; // порт занят, пробуем следующий
+            }
+        }
+        throw new Exception($"No free ports available in range {startPort}-{startPort + maxAttempts - 1}");
     }
 
     public async Task StartServerAsync()
@@ -36,9 +60,29 @@ public class TcpCommunicationService
         if (!_initialized)
             await InitializeAsync();
 
+        try
+        {
+            _actualListenPort = _configuredPort;
+            _listener = new TcpListener(IPAddress.Any, _actualListenPort);
+            _listener.Start();
+            System.Diagnostics.Debug.WriteLine($"TCP server started on port {_actualListenPort}");
+        }
+        catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+        {
+            System.Diagnostics.Debug.WriteLine($"Port {_configuredPort} is busy, finding free port...");
+            // Ищем свободный порт, начиная с _configuredPort + 1
+            _actualListenPort = await FindFreePortAsync(_configuredPort + 1);
+
+            // Сохраняем новый порт в настройки, чтобы при следующем запуске использовать его
+            await _dbService.SetSetting(SettingsKeys.TcpListenPort, _actualListenPort.ToString());
+            _configuredPort = _actualListenPort;
+
+            _listener = new TcpListener(IPAddress.Any, _actualListenPort);
+            _listener.Start();
+            System.Diagnostics.Debug.WriteLine($"TCP server started on alternate port {_actualListenPort}");
+        }
+
         _listenerCts = new CancellationTokenSource();
-        _listener = new TcpListener(IPAddress.Any, _listenPort);
-        _listener.Start();
         _ = Task.Run(() => AcceptClientsAsync(_listenerCts.Token));
     }
 
@@ -59,7 +103,7 @@ public class TcpCommunicationService
                 _ = HandleClientAsync(client, token);
             }
             catch (OperationCanceledException) { break; }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Accept error: {ex}"); }
         }
     }
 

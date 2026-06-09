@@ -4,8 +4,8 @@
              x:Class="LocalChat.Views.MainPage"
              Title="Local Chat" Padding="0">
     <Grid RowDefinitions="0.05*,0.75*,0.1*,0.1*" ColumnDefinitions="0.68*,0.16*,0.16*" Padding="0">
-        <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" BackgroundColor="Aqua" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
-        <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" BackgroundColor="Aqua" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
+        <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" TextColor="White" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
+        <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" TextColor="White" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
         <!-- Список пиров -->
         <ListView Grid.Row="1" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Peers}" BackgroundColor="DarkBlue" 
                       SelectedItem="{Binding SelectedPeer}"

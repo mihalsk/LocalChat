@@ -44,9 +44,9 @@ public class DatabaseService
         if (!await SettingExists(SettingsKeys.TcpListenPort))
             await SetSetting(SettingsKeys.TcpListenPort, "9000");
         if (!await SettingExists(SettingsKeys.MulticastAddress))
-            await SetSetting(SettingsKeys.MulticastAddress, "224.1.7.1");
+            await SetSetting(SettingsKeys.MulticastAddress, "239.0.0.");
         if (!await SettingExists(SettingsKeys.MulticastPort))
-            await SetSetting(SettingsKeys.MulticastPort, "8888");
+            await SetSetting(SettingsKeys.MulticastPort, "9988");
     }
 
     public async Task<bool> SettingExists(string key)

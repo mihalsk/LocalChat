@@ -20,10 +20,10 @@ public partial class SettingsViewModel : ObservableObject
     private string _tcpPort = "9000";
 
     [ObservableProperty]
-    private string _multicastAddress = "239.0.0.1";
+    private string _multicastAddress = "224.0.0.252";
 
     [ObservableProperty]
-    private string _multicastPort = "8888";
+    private string _multicastPort = "9988";
 
     public ICommand SaveCommand { get; }
 
@@ -39,8 +39,8 @@ public partial class SettingsViewModel : ObservableObject
         UserName = (await _dbService.GetSetting(SettingsKeys.UserName)) ?? Environment.MachineName;
         EncryptionPassword = (await _dbService.GetSetting(SettingsKeys.EncryptionPassword)) ?? "default2026!";
         TcpPort = (await _dbService.GetSetting(SettingsKeys.TcpListenPort)) ?? "9000";
-        MulticastAddress = (await _dbService.GetSetting(SettingsKeys.MulticastAddress)) ?? "239.0.0.1";
-        MulticastPort = (await _dbService.GetSetting(SettingsKeys.MulticastPort)) ?? "8888";
+        MulticastAddress = (await _dbService.GetSetting(SettingsKeys.MulticastAddress)) ?? "224.0.0.252";
+        MulticastPort = (await _dbService.GetSetting(SettingsKeys.MulticastPort)) ?? "9988";
     }
 
     private async Task SaveSettingsAsync()

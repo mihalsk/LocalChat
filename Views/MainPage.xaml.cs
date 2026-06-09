@@ -21,4 +21,10 @@ public partial class MainPage : ContentPage
                 await DisplayAlertAsync("Notification", "Enable notifications to receive messages in background.", "OK");
         }
     }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        (BindingContext as MainViewModel)?.Dispose();
+    }
 }

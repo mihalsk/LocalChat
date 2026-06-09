@@ -1,8 +1,8 @@
+using LocalChat.Models;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using LocalChat.Models;
 
 namespace LocalChat.Services;
 
@@ -13,7 +13,7 @@ public class NetworkDiscoveryService : IDisposable
     private int _multicastPort;
     private int _tcpPort;
     private string _userName;
-    private UdpClient? _udpClient;
+    private List<UdpClient> _udpClients = new();
     private Timer? _heartbeatTimer;
     private CancellationTokenSource? _listenerCts;
     private bool _disposed;
@@ -24,8 +24,7 @@ public class NetworkDiscoveryService : IDisposable
     public NetworkDiscoveryService(DatabaseService dbService)
     {
         _dbService = dbService;
-        // Временные значения по умолчанию, будут заменены при инициализации
-        _multicastAddress = "239.0.0.1";
+        _multicastAddress = "224.0.0.252";
         _multicastPort = 8888;
         _tcpPort = 9000;
         _userName = Environment.MachineName;
@@ -35,7 +34,7 @@ public class NetworkDiscoveryService : IDisposable
     {
         if (_initialized) return;
 
-        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? "239.0.0.1";
+        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? "224.0.0.252";
         _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? "8888");
         _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
         _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? Environment.MachineName;
@@ -49,12 +48,42 @@ public class NetworkDiscoveryService : IDisposable
             await InitializeAsync();
 
         _listenerCts = new CancellationTokenSource();
-        _udpClient = new UdpClient();
-        _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-        _udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
-        _udpClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
 
-        _ = Task.Run(() => ListenForHeartbeatsAsync(_listenerCts.Token));
+        // Получаем все локальные IPv4-адреса (не loopback)
+        var localIps = GetLocalIpAddresses();
+        System.Diagnostics.Debug.WriteLine($"localIps {string.Join(", ", localIps)}");
+        if (!localIps.Any())
+        {
+            throw new Exception("No suitable network interface found for multicast.");
+        }
+
+        foreach (var localIp in localIps)
+        {
+            try
+            {
+                var udpClient = new UdpClient();
+                udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                udpClient.Client.Bind(new IPEndPoint(localIp, _multicastPort));
+                udpClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress), localIp);
+                _udpClients.Add(udpClient);
+                System.Diagnostics.Debug.WriteLine($"Multicast listener on {localIp}:{_multicastPort}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to bind multicast on {localIp}: {ex.Message} {ex.StackTrace.ToString()}");
+                // Продолжаем с другими интерфейсами
+            }
+        }
+
+        if (_udpClients.Count == 0)
+            throw new Exception("Could not bind multicast on any network interface");
+
+        // Запуск прослушивания на всех клиентах
+        foreach (var client in _udpClients)
+        {
+            _ = Task.Run(() => ListenForHeartbeatsAsync(client, _listenerCts.Token));
+        }
+
         _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
     }
 
@@ -62,7 +91,11 @@ public class NetworkDiscoveryService : IDisposable
     {
         _heartbeatTimer?.Dispose();
         _listenerCts?.Cancel();
-        _udpClient?.Close();
+        foreach (var client in _udpClients)
+        {
+            client?.Close();
+        }
+        _udpClients.Clear();
         await Task.CompletedTask;
     }
 
@@ -70,8 +103,11 @@ public class NetworkDiscoveryService : IDisposable
     {
         try
         {
-            var localIp = GetLocalIpAddress();
-            if (string.IsNullOrEmpty(localIp)) return;
+            var localIps = GetLocalIpAddresses();
+            if (!localIps.Any()) return;
+
+            // Отправляем heartbeat с первым доступным IP
+            var localIp = localIps.First().ToString();
 
             var heartbeat = new
             {
@@ -85,18 +121,30 @@ public class NetworkDiscoveryService : IDisposable
             var json = JsonSerializer.Serialize(heartbeat);
             var data = Encoding.UTF8.GetBytes(json);
             var endpoint = new IPEndPoint(IPAddress.Parse(_multicastAddress), _multicastPort);
-            await _udpClient!.SendAsync(data, data.Length, endpoint);
+
+            // Отправляем через первый активный UdpClient
+            if (_udpClients.Count > 0)
+            {
+                await _udpClients[0].SendAsync(data, data.Length, endpoint);
+            }
+            else
+            {
+                // Fallback: временный клиент для отправки
+                using var tempClient = new UdpClient();
+                tempClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
+                await tempClient.SendAsync(data, data.Length, endpoint);
+            }
         }
-        catch { /* ignore network errors */ }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"SendHeartbeat error: {ex.Message}"); }
     }
 
-    private async Task ListenForHeartbeatsAsync(CancellationToken token)
+    private async Task ListenForHeartbeatsAsync(UdpClient client, CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {
             try
             {
-                var result = await _udpClient!.ReceiveAsync(token);
+                var result = await client.ReceiveAsync(token);
                 var json = Encoding.UTF8.GetString(result.Buffer);
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
@@ -123,16 +171,16 @@ public class NetworkDiscoveryService : IDisposable
                 PeerDiscovered?.Invoke(peer);
             }
             catch (OperationCanceledException) { break; }
-            catch { /* ignore */ }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Listen error: {ex.Message}"); }
         }
     }
 
-    private string GetLocalIpAddress()
+    private List<IPAddress> GetLocalIpAddresses()
     {
-        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0);
-        socket.Connect("8.8.8.8", 65530);
-        var endPoint = socket.LocalEndPoint as IPEndPoint;
-        return endPoint?.Address.ToString() ?? "";
+        var host = Dns.GetHostEntry(Dns.GetHostName());
+        return host.AddressList
+            .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
+            .ToList();
     }
 
     public void Dispose()
@@ -140,7 +188,8 @@ public class NetworkDiscoveryService : IDisposable
         if (_disposed) return;
         _heartbeatTimer?.Dispose();
         _listenerCts?.Cancel();
-        _udpClient?.Close();
+        foreach (var client in _udpClients)
+            client?.Close();
         _disposed = true;
     }
 }
