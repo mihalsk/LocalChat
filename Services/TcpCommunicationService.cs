@@ -38,6 +38,7 @@ public class TcpCommunicationService
     /// </summary>
     private async Task<int> FindFreePortAsync(int startPort, int maxAttempts = 100)
     {
+        startPort = 9000;
         for (int port = startPort; port < startPort + maxAttempts; port++)
         {
             try
@@ -45,6 +46,7 @@ public class TcpCommunicationService
                 var tempListener = new TcpListener(IPAddress.Any, port);
                 tempListener.Start();
                 tempListener.Stop();
+                System.Diagnostics.Debug.WriteLine($"Free TCP port {port}");
                 return port; // порт свободен
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
@@ -65,7 +67,7 @@ public class TcpCommunicationService
             _actualListenPort = _configuredPort;
             _listener = new TcpListener(IPAddress.Any, _actualListenPort);
             _listener.Start();
-            System.Diagnostics.Debug.WriteLine($"TCP server started on port {_actualListenPort}");
+            System.Diagnostics.Debug.WriteLine($"TCP server started on port {_actualListenPort} {_listener.LocalEndpoint}");
         }
         catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
         {
@@ -90,6 +92,7 @@ public class TcpCommunicationService
     {
         _listenerCts?.Cancel();
         _listener?.Stop();
+        //_listener?.Dispose();
         await Task.CompletedTask;
     }
 

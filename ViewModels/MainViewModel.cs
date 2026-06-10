@@ -80,9 +80,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
             await UpdateStatus("Starting network services...");
             await _discovery.StartAsync();
             await _tcpComm.StartServerAsync();
-
+            System.Diagnostics.Debug.WriteLine("Network init(MVM)...");
             await UpdateStatus($"Online:{await _dbService.GetSetting(SettingsKeys.MulticastAddress)}:" +
-                $"{await _dbService.GetSetting(SettingsKeys.MulticastPort)},{await _dbService.GetSetting(SettingsKeys.TcpListenPort)}");
+                $"{await _dbService.GetSetting(SettingsKeys.MulticastPort)}," +
+                //$"{await _tcpComm.}" +
+                $"{await _dbService.GetSetting(SettingsKeys.TcpListenPort)}");
         }
         catch (Exception ex)
         {

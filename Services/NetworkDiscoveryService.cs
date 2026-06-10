@@ -1,4 +1,7 @@
 using LocalChat.Models;
+#if ANDROID
+using LocalChat.Platforms.Android.Services;
+#endif
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -10,6 +13,9 @@ namespace LocalChat.Services;
 public class NetworkDiscoveryService : IDisposable
 {
     private readonly DatabaseService _dbService;
+#if ANDROID
+    private readonly MulticastLockService? _multicastLockService;
+#endif
     private string _multicastAddress;
     private int _multicastPort;
     private int _tcpPort;
@@ -22,13 +28,20 @@ public class NetworkDiscoveryService : IDisposable
 
     public event Action<Peer>? PeerDiscovered;
 
-    public NetworkDiscoveryService(DatabaseService dbService)
+    public NetworkDiscoveryService(DatabaseService dbService
+#if ANDROID
+        , MulticastLockService? multicastLockService = null
+#endif
+        )
     {
         _dbService = dbService;
         _multicastAddress = "239.0.0.1";
         _multicastPort = 8888;
         _tcpPort = 9000;
         _userName = Environment.MachineName;
+#if ANDROID
+        _multicastLockService = multicastLockService;
+#endif
     }
 
     public async Task InitializeAsync()
@@ -57,7 +70,13 @@ public class NetworkDiscoveryService : IDisposable
         }
 
         var multicastGroup = IPAddress.Parse(_multicastAddress);
-
+#if ANDROID
+        if (_multicastLockService != null)
+        {
+            _multicastLockService.AcquireLock();
+            System.Diagnostics.Debug.WriteLine("Multicast lock acquired.");
+        }
+#endif
         foreach (var localIp in localIps)
         {
             try
@@ -80,12 +99,14 @@ public class NetworkDiscoveryService : IDisposable
         {
             // Последняя попытка: привязываемся к любому интерфейсу
             var fallbackClient = new UdpClient();
+            fallbackClient.ExclusiveAddressUse = false;
             fallbackClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             fallbackClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
             fallbackClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
             _udpClients.Add(fallbackClient);
             if (_udpClients.Count == 0) // strange decision 
                 throw new Exception("Could not bind multicast on any network interface");
+            System.Diagnostics.Debug.WriteLine($"Multicast listener on 'any' {IPAddress.Any.ToString()}:{_multicastPort}");
         }
         
 
@@ -106,6 +127,13 @@ public class NetworkDiscoveryService : IDisposable
             client?.Close();
         }
         _udpClients.Clear();
+#if ANDROID
+        if (_multicastLockService != null)
+        {
+            _multicastLockService.ReleaseLock();
+            System.Diagnostics.Debug.WriteLine("Multicast lock released.");
+        }
+#endif
         await Task.CompletedTask;
     }
 
@@ -168,7 +196,7 @@ public class NetworkDiscoveryService : IDisposable
                     TcpPort = root.GetProperty("TcpPort").GetInt32(),
                     LastSeen = root.GetProperty("Timestamp").GetDateTime()
                 };
-
+                System.Diagnostics.Debug.WriteLine($"{peerId}-{peer.IpAddress}:{peer.TcpPort}");
                 var existing = await _dbService.GetPeerByPeerIdAsync(peer.PeerId);
                 if (existing == null)
                     await _dbService.SavePeerAsync(peer);
