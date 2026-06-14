@@ -1,4 +1,5 @@
 using LocalChat.Models;
+using LocalChat.Helpers;
 #if ANDROID
 using LocalChat.Platforms.Android.Services;
 #endif
@@ -35,9 +36,9 @@ public class NetworkDiscoveryService : IDisposable
         )
     {
         _dbService = dbService;
-        _multicastAddress = "239.0.0.1";
-        _multicastPort = 8888;
-        _tcpPort = 9000;
+        _multicastAddress = Constants.MULTICAST_GROUP;
+        _multicastPort = Constants.MULTICAST_PORT;
+        _tcpPort = Constants.TCP_PORT;
         _userName = Environment.MachineName;
 #if ANDROID
         _multicastLockService = multicastLockService;
@@ -48,11 +49,15 @@ public class NetworkDiscoveryService : IDisposable
     {
         if (_initialized) return;
 
-        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? "239.0.0.1";
-        _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? "8888");
-        _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
-        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? Environment.MachineName;
-
+        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? Constants.MULTICAST_GROUP;
+        _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? Constants.MULTICAST_PORT.ToString());
+        _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? Constants.TCP_PORT.ToString());
+        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ??
+#if ANDROID
+        Java.Net.InetAddress.LocalHost.HostName;
+#else
+        DeviceInfo.Current.Name; //Dns.GetHostName(); //Environment.MachineName;
+#endif
         _initialized = true;
     }
 
@@ -77,12 +82,18 @@ public class NetworkDiscoveryService : IDisposable
             System.Diagnostics.Debug.WriteLine("Multicast lock acquired.");
         }
 #endif
-        foreach (var localIp in localIps)
+        foreach (var localIp in localIps) //.Where(x => x.Address.ToString().StartsWith("192.168.")))
         {
             try
             {
                 var udpClient = new UdpClient();
                 udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                
+                //var isMultiCast = udpClient?.Client?.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface);
+               // if (isMultiCast is not null && !(bool)isMultiCast)
+               udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface, true);
+                
+                
                 udpClient.Client.Bind(new IPEndPoint(localIp, _multicastPort));
                 udpClient.JoinMulticastGroup(multicastGroup, localIp);
                 _udpClients.Add(udpClient);
@@ -106,12 +117,13 @@ public class NetworkDiscoveryService : IDisposable
             _udpClients.Add(fallbackClient);
             if (_udpClients.Count == 0) // strange decision 
                 throw new Exception("Could not bind multicast on any network interface");
-            System.Diagnostics.Debug.WriteLine($"Multicast listener on 'any' {IPAddress.Any.ToString()}:{_multicastPort}");
+            System.Diagnostics.Debug.WriteLine($"Multicast listener on 'any' {IPAddress.Any.ToString()}:{fallbackClient.Client.LocalEndPoint}");
         }
         
 
         foreach (var client in _udpClients)
         {
+            //_ = Task.Factory.StartNew(() => ListenForHeartbeatsAsync(client, _listenerCts.Token), TaskCreationOptions.LongRunning);
             _ = Task.Run(() => ListenForHeartbeatsAsync(client, _listenerCts.Token));
         }
 
@@ -161,7 +173,11 @@ public class NetworkDiscoveryService : IDisposable
 
             if (_udpClients.Count > 0)
             {
-                await _udpClients[0].SendAsync(data, data.Length, endpoint);
+                foreach (var client in _udpClients)
+                {
+                    await client.SendAsync(data, data.Length, endpoint);
+                    System.Diagnostics.Debug.WriteLine($"SendHeartbeat for {client.Client.LocalEndPoint}");
+                }
             }
             else
             {
@@ -175,6 +191,7 @@ public class NetworkDiscoveryService : IDisposable
 
     private async Task ListenForHeartbeatsAsync(UdpClient client, CancellationToken token)
     {
+        System.Diagnostics.Debug.WriteLine($"Start listening {client.Client.LocalEndPoint}");
         while (!token.IsCancellationRequested)
         {
             try
@@ -186,6 +203,7 @@ public class NetworkDiscoveryService : IDisposable
                 if (root.GetProperty("Type").GetString() != "heartbeat") continue;
 
                 var peerId = root.GetProperty("PeerId").GetString();
+                System.Diagnostics.Debug.WriteLine($"Listening {client.Client.LocalEndPoint} - recieve from {peerId}");
                 if (peerId == App.PeerId) continue;
 
                 var peer = new Peer
@@ -205,9 +223,10 @@ public class NetworkDiscoveryService : IDisposable
 
                 PeerDiscovered?.Invoke(peer);
             }
-            catch (OperationCanceledException) { break; }
+            catch (OperationCanceledException ex) { System.Diagnostics.Debug.WriteLine($"Listen error: {ex.Message}"); break; }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Listen error: {ex.Message}"); }
         }
+        System.Diagnostics.Debug.WriteLine($"Stop listening {client?.Client?.LocalEndPoint}");
     }
 
     private List<IPAddress> GetLocalIpAddresses()
@@ -220,7 +239,8 @@ public class NetworkDiscoveryService : IDisposable
             var host = Dns.GetHostEntry(Dns.GetHostName());
             addresses.AddRange(host.AddressList
                 .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
-                .Where(ip => !ip.ToString().StartsWith("169.254.")));
+                //.Where(ip => !ip.ToString().StartsWith("169.254."))
+                .Where(ip => ip.ToString().StartsWith("192.168.")));
         }
         catch { /* игнорируем */ }
 

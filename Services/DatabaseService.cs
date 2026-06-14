@@ -1,5 +1,6 @@
 using SQLite;
 using LocalChat.Models;
+using LocalChat.Helpers;
 
 namespace LocalChat.Services;
 
@@ -42,11 +43,11 @@ public class DatabaseService
         if (!await SettingExists(SettingsKeys.EncryptionPassword))
             await SetSetting(SettingsKeys.EncryptionPassword, "default2026!");
         if (!await SettingExists(SettingsKeys.TcpListenPort))
-            await SetSetting(SettingsKeys.TcpListenPort, "9000");
+            await SetSetting(SettingsKeys.TcpListenPort, Constants.TCP_PORT.ToString());
         if (!await SettingExists(SettingsKeys.MulticastAddress))
-            await SetSetting(SettingsKeys.MulticastAddress, "239.0.0.1");
+            await SetSetting(SettingsKeys.MulticastAddress, Constants.MULTICAST_GROUP);
         if (!await SettingExists(SettingsKeys.MulticastPort))
-            await SetSetting(SettingsKeys.MulticastPort, "9988");
+            await SetSetting(SettingsKeys.MulticastPort, Constants.MULTICAST_PORT.ToString());
     }
 
     public async Task<bool> SettingExists(string key)

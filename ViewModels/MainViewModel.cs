@@ -14,7 +14,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly TcpCommunicationService _tcpComm;
     private readonly FileTransferService _fileTransfer;
     private readonly EncryptionService _encryption;
-
+    private readonly NetworkServiceManager _networkServiceManager;
     private Timer? _onlineStatusTimer;
 
     [ObservableProperty]
@@ -41,15 +41,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public MainViewModel(DatabaseService dbService, NetworkDiscoveryService discovery,
                          TcpCommunicationService tcpComm, FileTransferService fileTransfer,
-                         EncryptionService encryption)
+                         EncryptionService encryption, NetworkServiceManager networkServiceManager                         
+        )
     {
         _dbService = dbService;
         _discovery = discovery;
         _tcpComm = tcpComm;
         _fileTransfer = fileTransfer;
         _encryption = encryption;
-
-
+        _networkServiceManager = networkServiceManager;
 
         SendMessageCommand = new AsyncRelayCommand(SendMessageAsync);
         SendFileCommand = new AsyncRelayCommand(SendFileAsync);
@@ -62,8 +62,34 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         Task.Run(InitializeAsync);
     }
-
     private async Task InitializeAsync()
+    {
+        try
+        {
+            await UpdateStatus("Initializing database...");
+            await _dbService.InitializeAsync();
+
+            await UpdateStatus("Loading peers...");
+            await LoadPeersAsync();
+
+            await UpdateStatus("Starting network services...");
+
+            await _networkServiceManager.StartAsync(); // вместо отдельных вызовов
+
+            await UpdateStatus("Online");
+            System.Diagnostics.Debug.WriteLine("Network init(MVM)...");
+            await UpdateStatus($"Online:{await _dbService.GetSetting(SettingsKeys.MulticastAddress)}:" +
+                $"{await _dbService.GetSetting(SettingsKeys.MulticastPort)}," +
+                //$"{await _tcpComm.}" +
+                $"{await _dbService.GetSetting(SettingsKeys.TcpListenPort)}");
+        }
+        catch (Exception ex)
+        {
+            await UpdateStatus($"Init error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Init error: {ex}");
+        }
+    }
+    private async Task InitializeAsync__()
     {
         try
         {
@@ -194,6 +220,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private async Task RefreshPeersAsync() => await LoadPeersAsync();
 
     public void Dispose()
+    {
+        _discovery.PeerDiscovered -= OnPeerDiscovered;
+        _tcpComm.MessageReceived -= OnMessageReceived;
+        _networkServiceManager.StopAsync().Wait(); // остановка через менеджер
+    }
+    public void Dispose__()
     {
         _discovery.PeerDiscovered -= OnPeerDiscovered;
         _tcpComm.MessageReceived -= OnMessageReceived;

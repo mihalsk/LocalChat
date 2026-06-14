@@ -18,18 +18,25 @@ public class MulticastLockService
         {
             _multicastLock = _wifiManager.CreateMulticastLock("LocalChat.MulticastLock");
             _multicastLock?.SetReferenceCounted(false);
+            System.Diagnostics.Debug.WriteLine("(A)Multicast lock created.");
         }
     }
 
     public void AcquireLock()
     {
         if (_multicastLock != null && !_multicastLock.IsHeld)
+        {
             _multicastLock.Acquire();
+            System.Diagnostics.Debug.WriteLine("(A)Multicast lock acquired."); ;
+        } 
     }
 
     public void ReleaseLock()
     {
         if (_multicastLock != null && _multicastLock.IsHeld)
+        {  
             _multicastLock.Release();
+            System.Diagnostics.Debug.WriteLine("(A)Multicast lock realeased.");
+        }
     }
 }

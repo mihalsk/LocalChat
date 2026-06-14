@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using LocalChat.Helpers;
 using LocalChat.Models;
 
 namespace LocalChat.Services;
@@ -22,14 +23,14 @@ public class TcpCommunicationService
     {
         _dbService = dbService;
         _encryption = encryption;
-        _configuredPort = 9000;
+        _configuredPort = Constants.TCP_PORT;
         _actualListenPort = 0;
     }
 
     public async Task InitializeAsync()
     {
         if (_initialized) return;
-        _configuredPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
+        _configuredPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? Constants.TCP_PORT.ToString());
         _initialized = true;
     }
 
@@ -38,7 +39,7 @@ public class TcpCommunicationService
     /// </summary>
     private async Task<int> FindFreePortAsync(int startPort, int maxAttempts = 100)
     {
-        startPort = 9000;
+        startPort = Constants.TCP_PORT;
         for (int port = startPort; port < startPort + maxAttempts; port++)
         {
             try

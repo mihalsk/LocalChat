@@ -3,56 +3,67 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              
              x:Class="LocalChat.Views.MainPage"
-             Title="Local Chat" Padding="0">
-    <Grid RowDefinitions="0.05*,0.75*,0.1*,0.1*" ColumnDefinitions="0.68*,0.16*,0.16*" Padding="0">
-        <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" TextColor="White" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
-        <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" TextColor="White" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
-        <!-- Список пиров -->
-        <CollectionView Grid.Row="1" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Peers}" BackgroundColor="DarkBlue" 
-                      SelectedItem="{Binding SelectedPeer}"
-                      SelectionMode="Single">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <StackLayout Orientation="Vertical">
-                        <Label TextColor="Gray" Text="{Binding Name}">
-                            <!-- ELSE: Default value -->
+             Padding="0">
+    <Grid>
+        <TitleBar Title="Чатищев" Padding="0" Margin="0">
+        </TitleBar>
+        <Grid RowDefinitions="0.1*,0.7*,0.1*,0.1*" ColumnDefinitions="0.68*,0.16*,0.16*" Padding="0" BackgroundColor="LightGrey">
+            <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" TextColor="Black" BackgroundColor="LightGrey" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
+            <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" TextColor="Black" BackgroundColor="LightGrey" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
+            <!-- Список пиров -->
+            <CollectionView Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" 
+                    ItemsSource="{Binding Peers}" 
+                    BackgroundColor="WhiteSmoke" 
+                    SelectedItem="{Binding SelectedPeer}"
+                    SelectionMode="Single">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Orientation="Vertical" Padding="2">
+                            <Label TextColor="DarkBlue" Text="{Binding Name}" BackgroundColor="LightGrey">
+                                <!-- ELSE: Default value -->
 
-                            <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsOnline}" Value="True">
-                                    <Setter Property="TextColor" Value="Lime" />
-                                </DataTrigger>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsOnline}" Value="False">
-                                    <Setter Property="TextColor" Value="Gray" />
-                                </DataTrigger>
-                            </Label.Triggers>
-                        </Label>
-                        <Label Text="{Binding IpAddress}" TextColor="Gray"></Label>
-                    </StackLayout>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-            
-        </CollectionView>
-        <!-- Область чата -->
-        <CollectionView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" ItemsSource="{Binding Messages}" BackgroundColor="White">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <StackLayout Margin="5">
-                        <Label Text="{Binding Content}"
-                                Padding="10"
-                                HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"
-                                BackgroundColor="{Binding IsSentByMe, Converter={StaticResource BoolToColor}}"/>
-                        <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm}'}" 
-                                FontSize="10" 
-                                HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"/>
-                    </StackLayout>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsOnline}" Value="True">
+                                        <Setter Property="TextColor" Value="ForestGreen" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsOnline}" Value="False">
+                                        <Setter Property="TextColor" Value="DarkBlue" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                            <Label Text="{Binding IpAddress}" TextColor="Gray"></Label>
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
 
-        <Entry Grid.Row="3" Grid.Column="0" Text="{Binding NewMessageText}" Placeholder="Type message..." BackgroundColor="LightGray"
-                HorizontalOptions="FillAndExpand"/>
-        <Button Grid.Row="3" Grid.Column="1" Margin="5" Text="👈" TextColor="White" Command="{Binding SendMessageCommand}"/>
-        <Button Grid.Row="3" Grid.Column="2" Margin="5" Text="📎" TextColor="White" Command="{Binding SendFileCommand}"/>
-        <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="" Command="{Binding RefreshPeersCommand}"/>
+            </CollectionView>
+            <!-- Область чата -->
+            <CollectionView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" ItemsSource="{Binding Messages}" BackgroundColor="White">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Margin="5">
+                            <Label Text="{Binding Content}"
+                            Padding="10"
+                            HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"
+                            BackgroundColor="{Binding IsSentByMe, Converter={StaticResource BoolToColor}}">
+                                <Label.GestureRecognizers>
+                                    <!-- Use NumberOfTapsRequired="1" for simple click, or "2" for double click -->
+                                    <TapGestureRecognizer Tapped="OnLabelTapped" NumberOfTapsRequired="1" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                            <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm}'}" 
+                            FontSize="10" 
+                            HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"/>
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Entry Grid.Row="3" Grid.Column="0" Text="{Binding NewMessageText}" Placeholder="Type message..." BackgroundColor="LightGray"
+            HorizontalOptions="FillAndExpand"/>
+            <Button Grid.Row="3" Grid.Column="1" Margin="5" Text="👈" TextColor="White" Command="{Binding SendMessageCommand}"/>
+            <Button Grid.Row="3" Grid.Column="2" Margin="5" Text="📎" TextColor="White" Command="{Binding SendFileCommand}"/>
+            <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="" Command="{Binding RefreshPeersCommand}"/>
+        </Grid>
     </Grid>
 </ContentPage>

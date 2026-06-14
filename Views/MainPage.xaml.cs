@@ -27,4 +27,18 @@ public partial class MainPage : ContentPage
         base.OnDisappearing();
         (BindingContext as MainViewModel)?.Dispose();
     }
+    private async void OnLabelTapped(object sender, TappedEventArgs e)
+    {
+        if (sender is Label label && !string.IsNullOrEmpty(label.Text))
+        {
+            // Enforce execution on the main UI thread to prevent platform crashes
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await Clipboard.Default.SetTextAsync(label.Text);
+
+                // Note: Android 13+ automatically displays a system copy toast notification,
+                // so you can skip displaying a custom popup message to avoid duplication.
+            });
+        }
+    }
 }

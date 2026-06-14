@@ -1,3 +1,4 @@
+using LocalChat.Helpers;
 using SQLite;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -17,7 +18,7 @@ public class Peer : INotifyPropertyChanged
 
     public string Name { get; set; } = "Unknown";
     public string IpAddress { get; set; } = string.Empty;
-    public int TcpPort { get; set; } = 9000;
+    public int TcpPort { get; set; } = Constants.TCP_PORT;
 
     public DateTime LastSeen
     {

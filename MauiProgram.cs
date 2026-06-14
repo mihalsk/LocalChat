@@ -8,6 +8,7 @@ namespace LocalChat;
 
 public static class MauiProgram
 {
+    public static IServiceProvider? Services { get; private set; }
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
@@ -21,26 +22,31 @@ public static class MauiProgram
             });
 
         // Регистрация сервисов
+        builder.Services.AddSingleton<NetworkServiceManager>();
+#if ANDROID
+        builder.Services.AddSingleton<Platforms.Android.Services.MulticastLockService>();
+#endif
         builder.Services.AddSingleton<DatabaseService>();
         builder.Services.AddSingleton<EncryptionService>();
         builder.Services.AddSingleton<NetworkDiscoveryService>();
         builder.Services.AddSingleton<TcpCommunicationService>();
+
+        
+
         builder.Services.AddSingleton<FileTransferService>();
         builder.Services.AddSingleton<MainViewModel>();
         builder.Services.AddTransient<SettingsViewModel>();
         builder.Services.AddTransient<MainPage>();
         builder.Services.AddTransient<SettingsPage>();
         // Android-специфичный сервис
-#if ANDROID
-        builder.Services.AddSingleton<LocalChat.Platforms.Android.Services.MulticastLockService>();
-#endif
+
 
         // NetworkDiscoveryService регистрируем с фабрикой, чтобы передать опциональный MulticastLockService
         builder.Services.AddSingleton(provider =>
         {
             var dbService = provider.GetRequiredService<DatabaseService>();
 #if ANDROID
-            var multicastLockService = provider.GetService<LocalChat.Platforms.Android.Services.MulticastLockService>();
+            var multicastLockService = provider.GetService<Platforms.Android.Services.MulticastLockService>();
             return new NetworkDiscoveryService(dbService, multicastLockService);
 #else
             return new NetworkDiscoveryService(dbService);
@@ -51,7 +57,9 @@ public static class MauiProgram
 #if DEBUG
         builder.Logging.AddDebug();
 #endif
-
-        return builder.Build();
+        var app = builder.Build();
+        Services = app.Services;
+        return app;
+        //return builder.Build();
     }
 }

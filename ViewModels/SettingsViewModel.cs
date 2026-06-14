@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LocalChat.Helpers;
 using LocalChat.Models;
 using LocalChat.Services;
 using System.Windows.Input;
@@ -17,13 +18,13 @@ public partial class SettingsViewModel : ObservableObject
     private string _encryptionPassword = string.Empty;
 
     [ObservableProperty]
-    private string _tcpPort = "9000";
+    private string _tcpPort = Constants.TCP_PORT.ToString();
 
     [ObservableProperty]
-    private string _multicastAddress = "239.0.0.1";
+    private string _multicastAddress = Constants.MULTICAST_GROUP;
 
     [ObservableProperty]
-    private string _multicastPort = "9988";
+    private string _multicastPort = Constants.MULTICAST_PORT.ToString();
 
     public ICommand SaveCommand { get; }
 
@@ -38,9 +39,9 @@ public partial class SettingsViewModel : ObservableObject
     {
         UserName = (await _dbService.GetSetting(SettingsKeys.UserName)) ?? Environment.MachineName;
         EncryptionPassword = (await _dbService.GetSetting(SettingsKeys.EncryptionPassword)) ?? "default2026!";
-        TcpPort = (await _dbService.GetSetting(SettingsKeys.TcpListenPort)) ?? "9000";
-        MulticastAddress = (await _dbService.GetSetting(SettingsKeys.MulticastAddress)) ?? "239.0.0.1";
-        MulticastPort = (await _dbService.GetSetting(SettingsKeys.MulticastPort)) ?? "9988";
+        TcpPort = (await _dbService.GetSetting(SettingsKeys.TcpListenPort)) ?? Constants.TCP_PORT.ToString();
+        MulticastAddress = (await _dbService.GetSetting(SettingsKeys.MulticastAddress)) ?? Constants.MULTICAST_GROUP;
+        MulticastPort = (await _dbService.GetSetting(SettingsKeys.MulticastPort)) ?? Constants.MULTICAST_PORT.ToString();
     }
 
     private async Task SaveSettingsAsync()
