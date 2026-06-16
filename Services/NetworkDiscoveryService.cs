@@ -8,6 +8,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+//using Java.Net;
 
 namespace LocalChat.Services;
 
@@ -88,37 +89,42 @@ public class NetworkDiscoveryService : IDisposable
             {
                 var udpClient = new UdpClient();
                 udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                var mcastOption = new MulticastOption(multicastGroup, localIp);
+                udpClient.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, mcastOption);
+                udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
                 
+
                 //var isMultiCast = udpClient?.Client?.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface);
-               // if (isMultiCast is not null && !(bool)isMultiCast)
-               udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface, true);
-                
-                
-                udpClient.Client.Bind(new IPEndPoint(localIp, _multicastPort));
-                udpClient.JoinMulticastGroup(multicastGroup, localIp);
+                // if (isMultiCast is not null && !(bool)isMultiCast)
+                //udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface, true);
+                //udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastLoopback, true);
+                //udpClient.Client.Bind(new IPEndPoint(localIp, _multicastPort));
+                //udpClient.JoinMulticastGroup(multicastGroup, localIp);
+
                 _udpClients.Add(udpClient);
                 System.Diagnostics.Debug.WriteLine($"Multicast listener on {localIp}:{_multicastPort}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to bind multicast on {localIp}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to bind multicast on {localIp}: {ex.StackTrace}");
                 // Продолжаем с другими интерфейсами
             }
         }
 
-        if (_udpClients.Count == 0)
-        {
-            // Последняя попытка: привязываемся к любому интерфейсу
-            var fallbackClient = new UdpClient();
-            fallbackClient.ExclusiveAddressUse = false;
-            fallbackClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            fallbackClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
-            fallbackClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
-            _udpClients.Add(fallbackClient);
-            if (_udpClients.Count == 0) // strange decision 
-                throw new Exception("Could not bind multicast on any network interface");
-            System.Diagnostics.Debug.WriteLine($"Multicast listener on 'any' {IPAddress.Any.ToString()}:{fallbackClient.Client.LocalEndPoint}");
-        }
+        //if (_udpClients.Count == 0)
+        //{
+        //    // Последняя попытка: привязываемся к любому интерфейсу
+        //    var fallbackClient = new UdpClient();
+        //    fallbackClient.ExclusiveAddressUse = false;
+        //    fallbackClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        //    fallbackClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
+        //    fallbackClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
+        //    _udpClients.Add(fallbackClient);
+        //    if (_udpClients.Count == 0) // strange decision 
+        //        throw new Exception("Could not bind multicast on any network interface");
+        //    System.Diagnostics.Debug.WriteLine($"Multicast listener on 'any' {IPAddress.Any.ToString()}:{fallbackClient.Client.LocalEndPoint}");
+        //}
         
 
         foreach (var client in _udpClients)
@@ -179,7 +185,7 @@ public class NetworkDiscoveryService : IDisposable
                     System.Diagnostics.Debug.WriteLine($"SendHeartbeat for {client.Client.LocalEndPoint}");
                 }
             }
-            else
+            else //?
             {
                 using var tempClient = new UdpClient();
                 tempClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
@@ -260,7 +266,8 @@ public class NetworkDiscoveryService : IDisposable
                 {
                     if (addr.Address.AddressFamily == AddressFamily.InterNetwork &&
                         !IPAddress.IsLoopback(addr.Address) &&
-                        !addr.Address.ToString().StartsWith("169.254."))
+                        addr.Address.ToString().StartsWith("192.168."))
+                        //!addr.Address.ToString().StartsWith("169.254."))
                     {
                         addresses.Add(addr.Address);
                     }

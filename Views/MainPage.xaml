@@ -42,12 +42,19 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <StackLayout Margin="5">
-                            <Label Text="{Binding Content}"
-                            Padding="10"
+                            <Label TextColor="Black"
+                            Padding="5"
                             HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"
                             BackgroundColor="{Binding IsSentByMe, Converter={StaticResource BoolToColor}}">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsFileMessage}" Value="False">
+                                        <Setter Property="Text" Value="{Binding Content}" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsFileMessage}" Value="True">
+                                        <Setter Property="Text" Value="{Binding OriginalFileName}" />
+                                    </DataTrigger>
+                                </Label.Triggers>
                                 <Label.GestureRecognizers>
-                                    <!-- Use NumberOfTapsRequired="1" for simple click, or "2" for double click -->
                                     <TapGestureRecognizer Tapped="OnLabelTapped" NumberOfTapsRequired="1" />
                                 </Label.GestureRecognizers>
                             </Label>
@@ -58,12 +65,14 @@
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
-
-            <Entry Grid.Row="3" Grid.Column="0" Text="{Binding NewMessageText}" Placeholder="Type message..." BackgroundColor="LightGray"
-            HorizontalOptions="FillAndExpand"/>
-            <Button Grid.Row="3" Grid.Column="1" Margin="5" Text="👈" TextColor="White" Command="{Binding SendMessageCommand}"/>
-            <Button Grid.Row="3" Grid.Column="2" Margin="5" Text="📎" TextColor="White" Command="{Binding SendFileCommand}"/>
-            <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="" Command="{Binding RefreshPeersCommand}"/>
+            <Grid Grid.Row="3" Grid.Column="0">
+                <Entry  Text="{Binding NewMessageText}" TextColor="Black" Placeholder="Type message..." BackgroundColor="LightGray"/>
+            </Grid>
+            <!--👈 📎 🗘-->
+            <Button Grid.Row="3" Grid.Column="1" Margin="5" Text="⌲" TextColor="Black" FontSize="Medium" Command="{Binding SendMessageCommand}"/>
+            <Button Grid.Row="3" Grid.Column="2" Margin="5" Text="🔗" TextColor="Black" FontSize="Medium" Command="{Binding SendFileCommand}"/>
+            <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Text="⟲" TextColor="Black" FontSize="Medium" Command="{Binding RefreshPeersCommand}">
+            </Button>
         </Grid>
     </Grid>
 </ContentPage>
