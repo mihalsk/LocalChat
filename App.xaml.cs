@@ -14,6 +14,8 @@ public partial class App : Application
 
         // Получаем MainViewModel через DI и создаём MainPage
         var mainViewModel = MauiProgram.CreateMauiApp().Services.GetRequiredService<MainViewModel>();
-        MainPage = new NavigationPage(new Views.MainPage(mainViewModel));
+        NavigationPage mainNavigationPage = new NavigationPage(new Views.MainPage(mainViewModel));
+        NavigationPage.SetHasNavigationBar(this, false);
+        MainPage = mainNavigationPage;
     }
 }

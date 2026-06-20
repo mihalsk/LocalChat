@@ -3,11 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              
              x:Class="LocalChat.Views.MainPage"
-             Padding="0">
-    <Grid>
-        <TitleBar Title="Чатищев" Padding="0" Margin="0">
-        </TitleBar>
-        <Grid RowDefinitions="0.1*,0.7*,0.1*,0.1*" ColumnDefinitions="0.68*,0.16*,0.16*" Padding="0" BackgroundColor="LightGrey">
+             Padding="0" BackgroundColor="Aqua">
+    <!--NavigationPage.HasNavigationBar="False"-->
+    <Grid Padding="0" BackgroundColor="Bisque">
+        <Grid RowDefinitions="0.05*,0.85*,0.05*,0.05*" ColumnDefinitions="0.68*,0.16*,0.16*"  BackgroundColor="LightGrey">
             <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" TextColor="Black" BackgroundColor="LightGrey" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
             <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" TextColor="Black" BackgroundColor="LightGrey" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
             <!-- Список пиров -->
@@ -69,9 +68,9 @@
                 <Entry  Text="{Binding NewMessageText}" TextColor="Black" Placeholder="Type message..." BackgroundColor="LightGray"/>
             </Grid>
             <!--👈 📎 🗘-->
-            <Button Grid.Row="3" Grid.Column="1" Margin="5" Text="⌲" TextColor="Black" FontSize="Medium" Command="{Binding SendMessageCommand}"/>
-            <Button Grid.Row="3" Grid.Column="2" Margin="5" Text="🔗" TextColor="Black" FontSize="Medium" Command="{Binding SendFileCommand}"/>
-            <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Text="⟲" TextColor="Black" FontSize="Medium" Command="{Binding RefreshPeersCommand}">
+            <Button Grid.Row="3" Grid.Column="1" Margin="1" Padding="0" Text="⌲" TextColor="Black" FontSize="Medium" Command="{Binding SendMessageCommand}"/>
+            <Button Grid.Row="3" Grid.Column="2" Margin="1" Padding="0" Text="🔗" TextColor="Black" FontSize="Medium" Command="{Binding SendFileCommand}"/>
+            <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="1" Padding="0" Text="⟲" TextColor="Black" FontSize="Medium" Command="{Binding RefreshPeersCommand}">
             </Button>
         </Grid>
     </Grid>

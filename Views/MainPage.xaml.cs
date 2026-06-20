@@ -9,9 +9,9 @@ public partial class MainPage : ContentPage
         InitializeComponent();
         BindingContext = viewModel;
     }
-
     protected override async void OnAppearing()
     {
+        
         base.OnAppearing();
         if (DeviceInfo.Current.Platform == DevicePlatform.Android &&
             OperatingSystem.IsAndroidVersionAtLeast(33))
