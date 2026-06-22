@@ -30,7 +30,14 @@
                                     </DataTrigger>
                                 </Label.Triggers>
                             </Label>
-                            <Label Text="{Binding IpAddress}" TextColor="Gray"></Label>
+                            <Label TextColor="Gray">
+                                <Label.Text>
+                                    <MultiBinding StringFormat="{}{0}:{1}">
+                                        <Binding Path="IpAddress" />
+                                        <Binding Path="TcpPort" />
+                                    </MultiBinding>
+                                </Label.Text>
+                            </Label>
                         </StackLayout>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

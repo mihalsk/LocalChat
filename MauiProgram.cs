@@ -52,7 +52,11 @@ public static class MauiProgram
             return new NetworkDiscoveryService(dbService);
 #endif
         });
-
+#if ANDROID
+        builder.Services.AddSingleton<IFileStorageService, Platforms.Android.Services.FileStorageService>();
+#elif WINDOWS
+        builder.Services.AddSingleton<IFileStorageService, Platforms.Windows.FileStorageService>();
+#endif
 
 #if DEBUG
         builder.Logging.AddDebug();

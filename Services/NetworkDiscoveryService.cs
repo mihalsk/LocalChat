@@ -8,7 +8,6 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-//using Java.Net;
 
 namespace LocalChat.Services;
 
@@ -40,7 +39,7 @@ public class NetworkDiscoveryService : IDisposable
         _multicastAddress = Constants.MULTICAST_GROUP;
         _multicastPort = Constants.MULTICAST_PORT;
         _tcpPort = Constants.TCP_PORT;
-        _userName = Environment.MachineName;
+        _userName = DeviceInfo.Current.Name; // GetHostName(); // Environment.MachineName;
 #if ANDROID
         _multicastLockService = multicastLockService;
 #endif
@@ -53,12 +52,12 @@ public class NetworkDiscoveryService : IDisposable
         _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? Constants.MULTICAST_GROUP;
         _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? Constants.MULTICAST_PORT.ToString());
         _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? Constants.TCP_PORT.ToString());
-        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ??
-#if ANDROID
-        Java.Net.InetAddress.LocalHost.HostName;
-#else
-        DeviceInfo.Current.Name; //Dns.GetHostName(); //Environment.MachineName;
-#endif
+        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? DeviceInfo.Current.Name; //GetHostName();
+//#if ANDROID
+//        Java.Net.InetAddress.LocalHost.HostName;
+//#else
+//        DeviceInfo.Current.Name; //Dns.GetHostName(); //Environment.MachineName;
+//#endif
         _initialized = true;
     }
 
@@ -220,12 +219,17 @@ public class NetworkDiscoveryService : IDisposable
                     TcpPort = root.GetProperty("TcpPort").GetInt32(),
                     LastSeen = root.GetProperty("Timestamp").GetDateTime()
                 };
-                System.Diagnostics.Debug.WriteLine($"{peerId}-{peer.IpAddress}:{peer.TcpPort}");
-                var existing = await _dbService.GetPeerByPeerIdAsync(peer.PeerId);
+                System.Diagnostics.Debug.WriteLine($"{peer.IpAddress}:{peer.TcpPort}");
+                var existing = await _dbService.GetPeerByIpAddressAsync(peer.IpAddress); //_dbService.GetPeerByPeerIdAsync(peer.PeerId)
                 if (existing == null)
                     await _dbService.SavePeerAsync(peer);
                 else
-                    await _dbService.UpdatePeerLastSeen(peer.PeerId, peer.LastSeen);
+                {
+                    peer.Id = existing.Id;
+                    await _dbService.SavePeerAsync(peer);
+                    //await _dbService.UpdatePeerInfo(peer);  //_dbService.UpdatePeerLastSeen(peer.PeerId, peer.LastSeen);
+                }
+                    
 
                 PeerDiscovered?.Invoke(peer);
             }
@@ -278,6 +282,37 @@ public class NetworkDiscoveryService : IDisposable
 
         // Убираем дубликаты
         return addresses.Distinct().ToList();
+    }
+
+    public string GetHostName()
+    {
+        string hostName = DeviceInfo.Current.Name; // Environment.MachineName; 
+
+//#if ANDROID
+//        try
+//        {
+//            // Получаем системную службу Android
+//            var bluetoothAdapter = Android.Bluetooth.BluetoothAdapter.DefaultAdapter;
+//            if (bluetoothAdapter != null)
+//            {
+//                // Имя Bluetooth-устройства на Android часто совпадает с его сетевым именем
+//                hostName = bluetoothAdapter.Name;
+//            }
+
+//            // Альтернативный вариант через Java InetAddress
+//            if (string.IsNullOrEmpty(hostName) || hostName == "localhost")
+//            {
+//                var address = Java.Net.InetAddress.LocalHost;
+//                hostName = address.HostName;
+//            }
+//        }
+//        catch (Java.Net.UnknownHostException)
+//        {
+//            hostName = "Unknown";
+//        }
+//#endif
+
+        return hostName;
     }
 
     public void Dispose()

@@ -1,13 +1,17 @@
+using LocalChat.Models;
+using LocalChat.Services;
 using LocalChat.ViewModels;
 
 namespace LocalChat.Views;
 
 public partial class MainPage : ContentPage
 {
-    public MainPage(MainViewModel viewModel)
+    private readonly IFileStorageService _fileStorage;
+    public MainPage(MainViewModel viewModel, IFileStorageService fileStorage)
     {
         InitializeComponent();
         BindingContext = viewModel;
+        _fileStorage = fileStorage;
     }
     protected override async void OnAppearing()
     {
@@ -27,14 +31,37 @@ public partial class MainPage : ContentPage
         base.OnDisappearing();
         (BindingContext as MainViewModel)?.Dispose();
     }
+    //private async void OnLabelTapped(object sender, TappedEventArgs e)
+    //{
+    //    if (sender is Label label && !string.IsNullOrEmpty(label.Text))
+    //    {
+    //        await MainThread.InvokeOnMainThreadAsync(async () =>
+    //        {
+    //            await Clipboard.Default.SetTextAsync(label.Text);
+    //        });
+    //    }
+    //}
     private async void OnLabelTapped(object sender, TappedEventArgs e)
     {
-        if (sender is Label label && !string.IsNullOrEmpty(label.Text))
+        if (sender is Label label && label.BindingContext is Message message)
         {
-            await MainThread.InvokeOnMainThreadAsync(async () =>
+            if (message.IsFileMessage && !string.IsNullOrEmpty(message.FilePath))
             {
+                // Открываем файл
+                try
+                {
+                    await _fileStorage.OpenFileAsync(message.FilePath);
+                }
+                catch (Exception ex)
+                {
+                    await DisplayAlert("Ошибка", $"Не удалось открыть файл: {ex.Message}", "OK");
+                }
+            }
+            else if (!string.IsNullOrEmpty(label.Text))
+            {
+                // Копируем текст
                 await Clipboard.Default.SetTextAsync(label.Text);
-            });
+            }
         }
     }
 }

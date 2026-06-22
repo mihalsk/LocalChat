@@ -64,7 +64,7 @@ public class AndroidForegroundService : Service
         }
         if (_networkServiceManager != null)
         {
-            Task.Run(async () => await _networkServiceManager.StartAsync());
+            //Task.Run(async () => await _networkServiceManager.StartAsync());
         }
         return StartCommandResult.Sticky;
     }
