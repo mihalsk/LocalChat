@@ -14,6 +14,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly TcpCommunicationService _tcpComm;
     private readonly FileTransferService _fileTransfer;
     private readonly EncryptionService _encryption;
+    private readonly NetworkServiceManager _networkServiceManager;
+    private readonly IFileStorageService _fileStorage;
+    private Timer? _onlineStatusTimer;
 
     [ObservableProperty]
     private ObservableCollection<Peer> _peers = new();
@@ -39,13 +42,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public MainViewModel(DatabaseService dbService, NetworkDiscoveryService discovery,
                          TcpCommunicationService tcpComm, FileTransferService fileTransfer,
-                         EncryptionService encryption)
+                         EncryptionService encryption, NetworkServiceManager networkServiceManager,
+                         IFileStorageService fileStorage
+        )
     {
         _dbService = dbService;
         _discovery = discovery;
         _tcpComm = tcpComm;
         _fileTransfer = fileTransfer;
         _encryption = encryption;
+        _networkServiceManager = networkServiceManager;
+        _fileStorage = fileStorage;
+        
 
         SendMessageCommand = new AsyncRelayCommand(SendMessageAsync);
         SendFileCommand = new AsyncRelayCommand(SendFileAsync);
@@ -53,10 +61,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _discovery.PeerDiscovered += OnPeerDiscovered;
         _tcpComm.MessageReceived += OnMessageReceived;
+        _tcpComm.FileReceived += OnFileReceived;
+
+        _onlineStatusTimer = new Timer(UpdateOnlineStatus, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
         Task.Run(InitializeAsync);
     }
-
     private async Task InitializeAsync()
     {
         try
@@ -64,18 +74,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
             await UpdateStatus("Initializing database...");
             await _dbService.InitializeAsync();
 
-            await UpdateStatus("Loading network settings...");
-            await _discovery.InitializeAsync();
-            await _tcpComm.InitializeAsync();
-
             await UpdateStatus("Loading peers...");
             await LoadPeersAsync();
 
             await UpdateStatus("Starting network services...");
-            await _discovery.StartAsync();
-            await _tcpComm.StartServerAsync();
+
+            await _networkServiceManager.StartAsync(); // вместо отдельных вызовов
 
             await UpdateStatus("Online");
+            System.Diagnostics.Debug.WriteLine("Network init(MVM)...");
+            await UpdateStatus($"Online:{await _dbService.GetSetting(SettingsKeys.MulticastAddress)}:" +
+                $"{await _dbService.GetSetting(SettingsKeys.MulticastPort)}," +
+                //$"{await _tcpComm.}" +
+                $"{await _dbService.GetSetting(SettingsKeys.TcpListenPort)}");
         }
         catch (Exception ex)
         {
@@ -87,6 +98,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private async Task UpdateStatus(string status)
     {
         await (Application.Current?.Dispatcher?.DispatchAsync(() => StatusText = status) ?? Task.CompletedTask);
+    }
+
+    private void UpdateOnlineStatus(object? state)
+    {
+        Application.Current?.Dispatcher?.DispatchAsync(() =>
+        {
+            foreach (var peer in Peers)
+            {
+                peer.RefreshOnlineStatus();
+            }
+        });
     }
 
     private async Task LoadPeersAsync()
@@ -102,18 +124,26 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void OnPeerDiscovered(Peer peer)
     {
-        Application.Current?.Dispatcher?.DispatchAsync(async () =>
+        Application.Current?.Dispatcher?.DispatchAsync(() =>
         {
-            if (!Peers.Any(p => p.PeerId == peer.PeerId))
+        var existing = Peers.FirstOrDefault(p => p.IpAddress == peer.IpAddress); // p.PeerId == peer.PeerId);
+            if (existing == null)
+            {
                 Peers.Add(peer);
+            }
             else
             {
-                var existing = Peers.First(p => p.PeerId == peer.PeerId);
-                existing.LastSeen = peer.LastSeen;
+                // Обновляем существующий объект – тогда UI тоже обновится
                 existing.Name = peer.Name;
-                existing.IpAddress = peer.IpAddress;
+                //existing.IpAddress = peer.IpAddress;
+                existing.PeerId = peer.PeerId;
+                existing.TcpPort = peer.TcpPort;
+                existing.LastSeen = peer.LastSeen;
             }
-            await LoadPeersAsync(); // обновить порядок
+            // При желании пересортировать список:
+            // var sorted = Peers.OrderByDescending(p => p.LastSeen).ToList();
+            // Peers.Clear();
+            // foreach (var p in sorted) Peers.Add(p);
         });
     }
 
@@ -125,10 +155,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
             StatusText = $"New message from {message.SenderPeerId}";
         }) ?? Task.CompletedTask);
     }
-
+    private async Task OnFileReceived(Message message)
+    {
+        await (Application.Current?.Dispatcher?.DispatchAsync(() =>
+        {
+            Messages.Add(message);
+            StatusText = $"Получен файл: {message.OriginalFileName}";
+        }) ?? Task.CompletedTask);
+    }
     private async Task SendMessageAsync()
     {
-        if (string.IsNullOrWhiteSpace(NewMessageText) || SelectedPeer == null) return;
+        if (string.IsNullOrWhiteSpace(NewMessageText) || SelectedPeer == null || !SelectedPeer.IsOnline) return;
         IsBusy = true;
         try
         {
@@ -150,27 +187,25 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task SendFileAsync()
     {
-        if (SelectedPeer == null) return;
+        if (SelectedPeer == null || !SelectedPeer.IsOnline) return;
         try
         {
-            var result = await FilePicker.PickAsync(new PickOptions
-            {
-                PickerTitle = "Select file to send"
-            });
+            var result = await FilePicker.PickAsync(new PickOptions { PickerTitle = "Выберите файл для отправки" });
             if (result == null) return;
+
             await _fileTransfer.SendFileAsync(SelectedPeer, result.FullPath);
-            await UpdateStatus($"File sent to {SelectedPeer.Name}");
+            await UpdateStatus($"Файл отправлен {SelectedPeer.Name}");
         }
-        catch (Exception ex) { await UpdateStatus($"Error: {ex.Message}"); }
+        catch (Exception ex) { await UpdateStatus($"Ошибка: {ex.Message}"); }
     }
 
     private async Task RefreshPeersAsync() => await LoadPeersAsync();
 
     public void Dispose()
     {
+        _tcpComm.FileReceived -= OnFileReceived;
         _discovery.PeerDiscovered -= OnPeerDiscovered;
         _tcpComm.MessageReceived -= OnMessageReceived;
-        _discovery.StopAsync().Wait();
-        _tcpComm.StopServerAsync().Wait();
+        _networkServiceManager.StopAsync().Wait(); // остановка через менеджер
     }
 }

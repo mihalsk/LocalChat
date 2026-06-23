@@ -11,6 +11,7 @@
    sodipodi:docname="Splash.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <sodipodi:namedview
@@ -24,8 +25,8 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="px"
      inkscape:zoom="0.49794745"
-     inkscape:cx="85.350371"
-     inkscape:cy="1035.2498"
+     inkscape:cx="-248.01814"
+     inkscape:cy="870.57379"
      inkscape:window-width="2560"
      inkscape:window-height="1494"
      inkscape:window-x="-11"
@@ -34,41 +35,33 @@
      inkscape:current-layer="layer1" />
   <defs
      id="defs1">
+    <linearGradient
+       id="linearGradient1"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#530000;stop-opacity:1;"
+         offset="0"
+         id="stop1" />
+      <stop
+         style="stop-color:#ff0000;stop-opacity:1;"
+         offset="1"
+         id="stop2" />
+    </linearGradient>
     <rect
        x="142.58533"
        y="765.14097"
        width="863.54493"
        height="704.89365"
        id="rect1" />
-    <meshgradient
+    <linearGradient
        inkscape:collect="always"
-       id="meshgradient2"
-       gradientUnits="userSpaceOnUse"
-       x="161.42969"
-       y="795.04688">
-      <meshrow
-         id="meshrow2">
-        <meshpatch
-           id="meshpatch2">
-          <stop
-             path="c 75.125,0  150.25,0  225.375,0"
-             style="stop-color:#ffffff;stop-opacity:1"
-             id="stop3" />
-          <stop
-             path="c 0,59.9688  0,119.938  0,179.906"
-             style="stop-color:#000000;stop-opacity:1"
-             id="stop4" />
-          <stop
-             path="c -75.125,0  -150.25,0  -225.375,0"
-             style="stop-color:#ffffff;stop-opacity:1"
-             id="stop5" />
-          <stop
-             path="c 0,-59.9688  0,-119.938  0,-179.906"
-             style="stop-color:#000000;stop-opacity:1"
-             id="stop6" />
-        </meshpatch>
-      </meshrow>
-    </meshgradient>
+       xlink:href="#linearGradient1"
+       id="linearGradient2"
+       x1="339.03879"
+       y1="977.71771"
+       x2="209.19553"
+       y2="792.28229"
+       gradientUnits="userSpaceOnUse" />
   </defs>
   <g
      inkscape:label="Слой 1"
@@ -77,11 +70,11 @@
     <text
        xml:space="preserve"
        id="text1"
-       style="font-size:192px;text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect1);fill:url(#meshgradient2);stroke:#000000;stroke-opacity:1;fill-opacity:1;stroke-width:0.99998546;stroke-dasharray:none;stroke-linecap:square;stroke-linejoin:bevel;paint-order:markers fill stroke"
+       style="font-size:192px;text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect1);fill:url(#linearGradient2);stroke:#9d0000;stroke-opacity:1;fill-opacity:1;stroke-width:6.56853194;stroke-dasharray:none;stroke-linecap:butt;stroke-linejoin:bevel;paint-order:fill markers stroke"
        transform="matrix(3.8164579,0,0,3.8336727,-454.65992,-2252.9026)"><tspan
          x="142.58594"
          y="935.01562"
-         id="tspan1">Ку</tspan></text>
+         id="tspan2">Ку</tspan></text>
   </g>
   <script
      id="mesh_polyfill"

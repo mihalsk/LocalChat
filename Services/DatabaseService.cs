@@ -1,5 +1,7 @@
-using SQLite;
+using LocalChat.Helpers;
 using LocalChat.Models;
+using SQLite;
+using System.Net;
 
 namespace LocalChat.Services;
 
@@ -42,11 +44,11 @@ public class DatabaseService
         if (!await SettingExists(SettingsKeys.EncryptionPassword))
             await SetSetting(SettingsKeys.EncryptionPassword, "default2026!");
         if (!await SettingExists(SettingsKeys.TcpListenPort))
-            await SetSetting(SettingsKeys.TcpListenPort, "9000");
+            await SetSetting(SettingsKeys.TcpListenPort, Constants.TCP_PORT.ToString());
         if (!await SettingExists(SettingsKeys.MulticastAddress))
-            await SetSetting(SettingsKeys.MulticastAddress, "224.1.7.1");
+            await SetSetting(SettingsKeys.MulticastAddress, Constants.MULTICAST_GROUP);
         if (!await SettingExists(SettingsKeys.MulticastPort))
-            await SetSetting(SettingsKeys.MulticastPort, "8888");
+            await SetSetting(SettingsKeys.MulticastPort, Constants.MULTICAST_PORT.ToString());
     }
 
     public async Task<bool> SettingExists(string key)
@@ -79,10 +81,11 @@ public class DatabaseService
     public Task<List<Peer>> GetAllPeersAsync() => _database.Table<Peer>().ToListAsync();
     public Task<int> SavePeerAsync(Peer peer) => _database.InsertOrReplaceAsync(peer);
     public Task<int> DeletePeerAsync(Peer peer) => _database.DeleteAsync(peer);
-    public Task<Peer?> GetPeerByPeerIdAsync(string peerId) => _database.Table<Peer>().FirstOrDefaultAsync(p => p.PeerId == peerId);
+    public Task<Peer?> GetPeerByPeerIdAsync(string peerId) => _database.Table<Peer?>().FirstOrDefaultAsync(p => p.PeerId == peerId);
+    public Task<Peer?> GetPeerByIpAddressAsync(string ipAddress) => _database.Table<Peer?>().FirstOrDefaultAsync(p => p.IpAddress == ipAddress);
     public Task<int> UpdatePeerLastSeen(string peerId, DateTime lastSeen) =>
-        _database.ExecuteAsync("UPDATE Peers SET LastSeen = ? WHERE PeerId = ?", lastSeen, peerId);
-
+        _database.ExecuteAsync("UPDATE Peers SET LastSeen = ? WHERE PeerId = ?", lastSeen, peerId); //lastSeen
+    public Task<int> UpdatePeerInfo(Peer peer) => _database.UpdateAsync(peer);
     // --- Messages ---
     public Task<List<Message>> GetMessagesWithPeerAsync(string peerId) =>
         _database.Table<Message>().Where(m => m.SenderPeerId == peerId || m.RecipientPeerId == peerId).OrderBy(m => m.Timestamp).ToListAsync();

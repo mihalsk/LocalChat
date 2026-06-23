@@ -1,42 +1,281 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             
              x:Class="LocalChat.Views.MainPage"
-             Title="Local Chat" Padding="0">
-    <Grid RowDefinitions="0.05*,0.75*,0.1*,0.1*" ColumnDefinitions="0.68*,0.16*,0.16*" Padding="0">
-        <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" BackgroundColor="Aqua" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
-        <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" BackgroundColor="Aqua" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
-        <!-- Список пиров -->
-        <ListView Grid.Row="1" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Peers}" BackgroundColor="DarkBlue" 
-                      SelectedItem="{Binding SelectedPeer}"
-                      SelectionMode="Single">
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <TextCell TextColor="White" Text="{Binding Name}" Detail="{Binding IpAddress}"/>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
-        <!-- Область чата -->
-        <CollectionView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" ItemsSource="{Binding Messages}" BackgroundColor="White">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <StackLayout Margin="5">
-                        <Label Text="{Binding Content}"
-                                Padding="10"
-                                HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"
-                                BackgroundColor="{Binding IsSentByMe, Converter={StaticResource BoolToColor}}"/>
-                        <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm}'}" 
-                                FontSize="10" 
-                                HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"/>
-                    </StackLayout>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+             Padding="0" BackgroundColor="Aqua">
+    <!--NavigationPage.HasNavigationBar="False"-->
+    <Grid Padding="0" BackgroundColor="Black">
+        <Grid RowDefinitions="0.06*,0.7*,0.055*,0.055*" ColumnDefinitions="0.68*,0.16*,0.16*"  BackgroundColor="LightGrey">
+            <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" Padding="0" Margin="0" TextColor="Black" BackgroundColor="LightGrey" Text="{Binding StatusText}" VerticalOptions="Center" HorizontalOptions="Start"/>
+            <Label Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Padding="0" Margin="0" TextColor="Black" BackgroundColor="LightGrey" Text="Пиры" VerticalOptions="Center" HorizontalOptions="Start"/>
+            <!-- Список пиров -->
+            <CollectionView Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" 
+                    ItemsSource="{Binding Peers}" 
+                    BackgroundColor="WhiteSmoke" 
+                    SelectedItem="{Binding SelectedPeer}"
+                    SelectionMode="Single">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Orientation="Vertical" Padding="2">
+                            <Label TextColor="DarkBlue" Text="{Binding Name}" BackgroundColor="LightGrey">
+                                <!-- ELSE: Default value -->
 
-        <Entry Grid.Row="3" Grid.Column="0" Text="{Binding NewMessageText}" Placeholder="Type message..." BackgroundColor="LightGray"
-                HorizontalOptions="FillAndExpand"/>
-        <Button Grid.Row="3" Grid.Column="1" Margin="5" Text="👈" TextColor="White" Command="{Binding SendMessageCommand}"/>
-        <Button Grid.Row="3" Grid.Column="2" Margin="5" Text="📎" TextColor="White" Command="{Binding SendFileCommand}"/>
-        <Button Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="5" Text="" Command="{Binding RefreshPeersCommand}"/>
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsOnline}" Value="True">
+                                        <Setter Property="TextColor" Value="ForestGreen" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsOnline}" Value="False">
+                                        <Setter Property="TextColor" Value="DarkBlue" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                            <Label TextColor="Gray">
+                                <Label.Text>
+                                    <MultiBinding StringFormat="{}{0}:{1}">
+                                        <Binding Path="IpAddress" />
+                                        <Binding Path="TcpPort" />
+                                    </MultiBinding>
+                                </Label.Text>
+                            </Label>
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+
+            </CollectionView>
+            <!-- Область чата -->
+            <CollectionView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" ItemsSource="{Binding Messages}" BackgroundColor="White">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Margin="5" 
+                                     Orientation="Vertical"
+                                     HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}">
+                            <StackLayout.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnStacLayoutTapped" NumberOfTapsRequired="1" />
+                            </StackLayout.GestureRecognizers>
+                            <StackLayout Orientation="Horizontal"
+                                         HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"
+                                         BackgroundColor="{Binding IsSentByMe, Converter={StaticResource BoolToColor}}">
+                                <!--<VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroupList>
+                                        <VisualStateGroup x:Name="CommonStates">
+                                            <VisualState x:Name="Normal">
+                                                <VisualState.Setters>
+                                                    <Setter Property="Scale"
+                                                            Value="1" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="Pressed">
+                                                <VisualState.Setters>
+                                                    <Setter Property="Scale"
+                                                            Value="0.9" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="PointerOver">
+                                                <VisualState.Setters>
+                                                    <Setter Property="Scale"
+                                                            Value="0.9" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="Focused">
+                                                <VisualState.Setters>
+                                                    <Setter Property="Scale"
+                                                            Value="0.9" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                        </VisualStateGroup>
+                                    </VisualStateGroupList>
+                                </VisualStateManager.VisualStateGroups>-->
+                                <ImageButton 
+                                         Source="filecopy.png"
+                                         HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"
+                                         
+                                         IsVisible="{Binding IsFileMessage}"
+                                         VerticalOptions="Fill">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroupList>
+                                            <VisualStateGroup x:Name="CommonStates">
+                                                <VisualState x:Name="Normal">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="Scale"
+                                                                Value="1" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                                <VisualState x:Name="Pressed">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="Scale"
+                                                                Value="0.9" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                                <VisualState x:Name="PointerOver">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="Scale"
+                                                                Value="0.9" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateGroupList>
+                                    </VisualStateManager.VisualStateGroups>
+                                    
+                                    
+                                </ImageButton>
+                                <Label TextColor="Black"
+                                       FontSize="Small"
+                                       Padding="5"
+                                       HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsFileMessage}" Value="False">
+                                            <Setter Property="Text" Value="{Binding Content}" />
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsFileMessage}" Value="True">
+                                            <Setter Property="Text" Value="{Binding OriginalFileName,StringFormat='{0}'}" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroupList>
+                                            <VisualStateGroup x:Name="CommonStates">
+                                                <VisualState x:Name="Normal">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="Scale"
+                                                                Value="1" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                                <VisualState x:Name="Pressed">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="Scale"
+                                                                Value="0.9" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                                <VisualState x:Name="PointerOver">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="Scale"
+                                                                Value="0.9" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateGroupList>
+                                    </VisualStateManager.VisualStateGroups>
+                                </Label>
+                            </StackLayout>
+                            
+                            <Label Text="{Binding Timestamp,StringFormat='{0:yy-MM-dd HH:mm}'}" 
+                                   TextColor="Black"
+                                   BackgroundColor="White"
+                                   
+                                   FontSize="10" 
+                                   HorizontalOptions="{Binding IsSentByMe, Converter={StaticResource BoolToAlignment}}"/>
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <Grid Grid.Row="3" Grid.Column="0" Padding="1" Margin="1">
+                <Entry HorizontalOptions="Fill" 
+                       VerticalOptions="Fill" 
+                       Text="{Binding NewMessageText}" 
+                       TextColor="Black" 
+                       Placeholder="Type message..." 
+                       BackgroundColor="LightGray"/>
+            </Grid>
+            <!--👈 📎 🗘-->
+            <ImageButton Grid.Row="3" 
+                         Grid.Column="1" 
+                         Margin="0" 
+                         Padding="0" 
+                         Source="sendalt.png"
+                         BackgroundColor="LightGray"
+                         BorderWidth="1"
+                         BorderColor="SlateGray"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill"
+                         CornerRadius="3"
+                         Command="{Binding SendMessageCommand}">
+                <!--Text="⌲" TextColor="Black" FontSize="Medium"-->
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                                            Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                                            Value="0.9" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="PointerOver" />
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </VisualStateManager.VisualStateGroups>
+            </ImageButton>
+            <ImageButton Grid.Row="3" 
+                         Grid.Column="2" 
+                         Margin="0" 
+                         Padding="0" 
+                         Source="attach.png"
+                         BackgroundColor="LightGray"
+                         BorderWidth="1"
+                         BorderColor="SlateGray"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill"
+                         CornerRadius="3"
+                         Command="{Binding SendFileCommand}">
+                <!--Text="🔗" TextColor="Black" FontSize="Medium"-->
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                                            Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                                            Value="0.9" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="PointerOver" />
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </VisualStateManager.VisualStateGroups>
+            </ImageButton>
+            <ImageButton Grid.Row="2" 
+                         Grid.Column="1"
+                         Grid.ColumnSpan="2" 
+                         Margin="0" Padding="0" 
+                         Source="refreshcwalt.png"
+                         BackgroundColor="LightGray"
+                         BorderWidth="1"
+                         BorderColor="SlateGray"
+                         HorizontalOptions="Fill"
+                         VerticalOptions="Fill"
+                         CornerRadius="3"
+                         Command="{Binding RefreshPeersCommand}">
+                <!--Text="⟲" TextColor="Black" FontSize="Medium"-->
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                                            Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                                            Value="0.9" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="PointerOver" />
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </VisualStateManager.VisualStateGroups>
+            </ImageButton>
+        </Grid>
     </Grid>
 </ContentPage>

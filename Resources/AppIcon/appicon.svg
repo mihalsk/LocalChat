@@ -11,6 +11,7 @@
    sodipodi:docname="appicon.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <sodipodi:namedview
@@ -23,9 +24,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="px"
-     inkscape:zoom="0.49794745"
-     inkscape:cx="85.350372"
-     inkscape:cy="1035.2498"
+     inkscape:zoom="0.9958949"
+     inkscape:cx="72.296786"
+     inkscape:cy="349.93652"
      inkscape:window-width="2560"
      inkscape:window-height="1494"
      inkscape:window-x="-11"
@@ -40,35 +41,33 @@
        width="863.54492"
        height="704.89368"
        id="rect1" />
-    <meshgradient
+    <linearGradient
        inkscape:collect="always"
-       id="meshgradient2"
-       gradientUnits="userSpaceOnUse"
-       x="161.42969"
-       y="795.04688">
-      <meshrow
-         id="meshrow2">
-        <meshpatch
-           id="meshpatch2">
-          <stop
-             path="c 75.125,0  150.25,0  225.375,0"
-             style="stop-color:#ffffff;stop-opacity:1"
-             id="stop3" />
-          <stop
-             path="c 0,59.9688  0,119.938  0,179.906"
-             style="stop-color:#000000;stop-opacity:1"
-             id="stop4" />
-          <stop
-             path="c -75.125,0  -150.25,0  -225.375,0"
-             style="stop-color:#ffffff;stop-opacity:1"
-             id="stop5" />
-          <stop
-             path="c 0,-59.9688  0,-119.938  0,-179.906"
-             style="stop-color:#000000;stop-opacity:1"
-             id="stop6" />
-        </meshpatch>
-      </meshrow>
-    </meshgradient>
+       xlink:href="#linearGradient1"
+       id="linearGradient2"
+       x1="339.03879"
+       y1="977.71771"
+       x2="209.19553"
+       y2="792.28229"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="linearGradient1"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#530000;stop-opacity:1;"
+         offset="0"
+         id="stop1" />
+      <stop
+         style="stop-color:#ff0000;stop-opacity:1;"
+         offset="1"
+         id="stop2" />
+    </linearGradient>
+    <rect
+       x="142.58533"
+       y="765.14099"
+       width="863.54492"
+       height="704.89368"
+       id="rect1-4" />
   </defs>
   <g
      inkscape:label="Слой 1"
@@ -77,11 +76,13 @@
     <text
        xml:space="preserve"
        id="text1"
-       style="font-size:192px;text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect1);display:inline;fill:url(#meshgradient2);fill-opacity:1;stroke:#000000;stroke-width:0.999985;stroke-linecap:square;stroke-linejoin:bevel;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
-       transform="matrix(1.3289562,0.6383853,-0.66503704,1.3844384,422.149,-1181.1026)"><tspan
+       style="font-size:192px;text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect1-4);display:inline;fill:url(#linearGradient2);fill-opacity:1;stroke:#9d0000;stroke-width:6.56853;stroke-linecap:butt;stroke-linejoin:bevel;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       transform="matrix(1.1452306,0.95541774,-0.790241,0.94723822,590.20563,-878.95789)"
+       inkscape:transform-center-x="-39.160759"
+       inkscape:transform-center-y="6.0247321"><tspan
          x="142.58594"
          y="935.01562"
-         id="tspan2">Ку</tspan></text>
+         id="tspan1">Ку</tspan></text>
   </g>
   <script
      id="mesh_polyfill"

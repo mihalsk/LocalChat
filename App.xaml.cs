@@ -1,3 +1,4 @@
+using LocalChat.Services;
 using LocalChat.ViewModels;
 
 namespace LocalChat;
@@ -14,6 +15,11 @@ public partial class App : Application
 
         // Получаем MainViewModel через DI и создаём MainPage
         var mainViewModel = MauiProgram.CreateMauiApp().Services.GetRequiredService<MainViewModel>();
-        MainPage = new NavigationPage(new Views.MainPage(mainViewModel));
+        var fileStorage = MauiProgram.CreateMauiApp().Services.GetRequiredService<IFileStorageService>();
+        ContentPage mainPage = new Views.MainPage(mainViewModel, fileStorage);
+        NavigationPage mainNavigationPage = new NavigationPage(mainPage);
+        NavigationPage.SetHasNavigationBar(mainPage, false);
+        MainPage = mainNavigationPage;
+        
     }
 }

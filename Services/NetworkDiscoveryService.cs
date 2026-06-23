@@ -1,19 +1,27 @@
+using LocalChat.Models;
+using LocalChat.Helpers;
+#if ANDROID
+using LocalChat.Platforms.Android.Services;
+#endif
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using LocalChat.Models;
 
 namespace LocalChat.Services;
 
 public class NetworkDiscoveryService : IDisposable
 {
     private readonly DatabaseService _dbService;
+#if ANDROID
+    private readonly MulticastLockService? _multicastLockService;
+#endif
     private string _multicastAddress;
     private int _multicastPort;
     private int _tcpPort;
     private string _userName;
-    private UdpClient? _udpClient;
+    private List<UdpClient> _udpClients = new();
     private Timer? _heartbeatTimer;
     private CancellationTokenSource? _listenerCts;
     private bool _disposed;
@@ -21,25 +29,35 @@ public class NetworkDiscoveryService : IDisposable
 
     public event Action<Peer>? PeerDiscovered;
 
-    public NetworkDiscoveryService(DatabaseService dbService)
+    public NetworkDiscoveryService(DatabaseService dbService
+#if ANDROID
+        , MulticastLockService? multicastLockService = null
+#endif
+        )
     {
         _dbService = dbService;
-        // Временные значения по умолчанию, будут заменены при инициализации
-        _multicastAddress = "239.0.0.1";
-        _multicastPort = 8888;
-        _tcpPort = 9000;
-        _userName = Environment.MachineName;
+        _multicastAddress = Constants.MULTICAST_GROUP;
+        _multicastPort = Constants.MULTICAST_PORT;
+        _tcpPort = Constants.TCP_PORT;
+        _userName = DeviceInfo.Current.Name; // GetHostName(); // Environment.MachineName;
+#if ANDROID
+        _multicastLockService = multicastLockService;
+#endif
     }
 
     public async Task InitializeAsync()
     {
         if (_initialized) return;
 
-        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? "239.0.0.1";
-        _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? "8888");
-        _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? "9000");
-        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? Environment.MachineName;
-
+        _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? Constants.MULTICAST_GROUP;
+        _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? Constants.MULTICAST_PORT.ToString());
+        _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? Constants.TCP_PORT.ToString());
+        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? DeviceInfo.Current.Name; //GetHostName();
+//#if ANDROID
+//        Java.Net.InetAddress.LocalHost.HostName;
+//#else
+//        DeviceInfo.Current.Name; //Dns.GetHostName(); //Environment.MachineName;
+//#endif
         _initialized = true;
     }
 
@@ -49,12 +67,71 @@ public class NetworkDiscoveryService : IDisposable
             await InitializeAsync();
 
         _listenerCts = new CancellationTokenSource();
-        _udpClient = new UdpClient();
-        _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-        _udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
-        _udpClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
 
-        _ = Task.Run(() => ListenForHeartbeatsAsync(_listenerCts.Token));
+        var localIps = GetLocalIpAddresses();
+        if (!localIps.Any())
+        {
+            throw new Exception("No suitable network interface found for multicast.");
+        }
+
+        var multicastGroup = IPAddress.Parse(_multicastAddress);
+#if ANDROID
+        if (_multicastLockService != null)
+        {
+            _multicastLockService.AcquireLock();
+            System.Diagnostics.Debug.WriteLine("Multicast lock acquired.");
+        }
+#endif
+        foreach (var localIp in localIps) //.Where(x => x.Address.ToString().StartsWith("192.168.")))
+        {
+            try
+            {
+                var udpClient = new UdpClient();
+                udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                var mcastOption = new MulticastOption(multicastGroup, localIp);
+                udpClient.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, mcastOption);
+                udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
+                
+
+                //var isMultiCast = udpClient?.Client?.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface);
+                // if (isMultiCast is not null && !(bool)isMultiCast)
+                //udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface, true);
+                //udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastLoopback, true);
+                //udpClient.Client.Bind(new IPEndPoint(localIp, _multicastPort));
+                //udpClient.JoinMulticastGroup(multicastGroup, localIp);
+
+                _udpClients.Add(udpClient);
+                System.Diagnostics.Debug.WriteLine($"Multicast listener on {localIp}:{_multicastPort}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to bind multicast on {localIp}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to bind multicast on {localIp}: {ex.StackTrace}");
+                // Продолжаем с другими интерфейсами
+            }
+        }
+
+        //if (_udpClients.Count == 0)
+        //{
+        //    // Последняя попытка: привязываемся к любому интерфейсу
+        //    var fallbackClient = new UdpClient();
+        //    fallbackClient.ExclusiveAddressUse = false;
+        //    fallbackClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        //    fallbackClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
+        //    fallbackClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
+        //    _udpClients.Add(fallbackClient);
+        //    if (_udpClients.Count == 0) // strange decision 
+        //        throw new Exception("Could not bind multicast on any network interface");
+        //    System.Diagnostics.Debug.WriteLine($"Multicast listener on 'any' {IPAddress.Any.ToString()}:{fallbackClient.Client.LocalEndPoint}");
+        //}
+        
+
+        foreach (var client in _udpClients)
+        {
+            //_ = Task.Factory.StartNew(() => ListenForHeartbeatsAsync(client, _listenerCts.Token), TaskCreationOptions.LongRunning);
+            _ = Task.Run(() => ListenForHeartbeatsAsync(client, _listenerCts.Token));
+        }
+
         _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
     }
 
@@ -62,7 +139,18 @@ public class NetworkDiscoveryService : IDisposable
     {
         _heartbeatTimer?.Dispose();
         _listenerCts?.Cancel();
-        _udpClient?.Close();
+        foreach (var client in _udpClients)
+        {
+            client?.Close();
+        }
+        _udpClients.Clear();
+#if ANDROID
+        if (_multicastLockService != null)
+        {
+            _multicastLockService.ReleaseLock();
+            System.Diagnostics.Debug.WriteLine("Multicast lock released.");
+        }
+#endif
         await Task.CompletedTask;
     }
 
@@ -70,8 +158,10 @@ public class NetworkDiscoveryService : IDisposable
     {
         try
         {
-            var localIp = GetLocalIpAddress();
-            if (string.IsNullOrEmpty(localIp)) return;
+            var localIps = GetLocalIpAddresses();
+            if (!localIps.Any()) return;
+
+            var localIp = localIps.First().ToString();
 
             var heartbeat = new
             {
@@ -85,24 +175,40 @@ public class NetworkDiscoveryService : IDisposable
             var json = JsonSerializer.Serialize(heartbeat);
             var data = Encoding.UTF8.GetBytes(json);
             var endpoint = new IPEndPoint(IPAddress.Parse(_multicastAddress), _multicastPort);
-            await _udpClient!.SendAsync(data, data.Length, endpoint);
+
+            if (_udpClients.Count > 0)
+            {
+                foreach (var client in _udpClients)
+                {
+                    await client.SendAsync(data, data.Length, endpoint);
+                    System.Diagnostics.Debug.WriteLine($"SendHeartbeat for {client.Client.LocalEndPoint}");
+                }
+            }
+            else //?
+            {
+                using var tempClient = new UdpClient();
+                tempClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
+                await tempClient.SendAsync(data, data.Length, endpoint);
+            }
         }
-        catch { /* ignore network errors */ }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"SendHeartbeat error: {ex.Message}"); }
     }
 
-    private async Task ListenForHeartbeatsAsync(CancellationToken token)
+    private async Task ListenForHeartbeatsAsync(UdpClient client, CancellationToken token)
     {
+        System.Diagnostics.Debug.WriteLine($"Start listening {client.Client.LocalEndPoint}");
         while (!token.IsCancellationRequested)
         {
             try
             {
-                var result = await _udpClient!.ReceiveAsync(token);
+                var result = await client.ReceiveAsync(token);
                 var json = Encoding.UTF8.GetString(result.Buffer);
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
                 if (root.GetProperty("Type").GetString() != "heartbeat") continue;
 
                 var peerId = root.GetProperty("PeerId").GetString();
+                System.Diagnostics.Debug.WriteLine($"Listening {client.Client.LocalEndPoint} - recieve from {peerId}");
                 if (peerId == App.PeerId) continue;
 
                 var peer = new Peer
@@ -113,26 +219,100 @@ public class NetworkDiscoveryService : IDisposable
                     TcpPort = root.GetProperty("TcpPort").GetInt32(),
                     LastSeen = root.GetProperty("Timestamp").GetDateTime()
                 };
-
-                var existing = await _dbService.GetPeerByPeerIdAsync(peer.PeerId);
+                System.Diagnostics.Debug.WriteLine($"{peer.IpAddress}:{peer.TcpPort}");
+                var existing = await _dbService.GetPeerByIpAddressAsync(peer.IpAddress); //_dbService.GetPeerByPeerIdAsync(peer.PeerId)
                 if (existing == null)
                     await _dbService.SavePeerAsync(peer);
                 else
-                    await _dbService.UpdatePeerLastSeen(peer.PeerId, peer.LastSeen);
+                {
+                    peer.Id = existing.Id;
+                    await _dbService.SavePeerAsync(peer);
+                    //await _dbService.UpdatePeerInfo(peer);  //_dbService.UpdatePeerLastSeen(peer.PeerId, peer.LastSeen);
+                }
+                    
 
                 PeerDiscovered?.Invoke(peer);
             }
-            catch (OperationCanceledException) { break; }
-            catch { /* ignore */ }
+            catch (OperationCanceledException ex) { System.Diagnostics.Debug.WriteLine($"Listen error: {ex.Message}"); break; }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Listen error: {ex.Message}"); }
         }
+        System.Diagnostics.Debug.WriteLine($"Stop listening {client?.Client?.LocalEndPoint}");
     }
 
-    private string GetLocalIpAddress()
+    private List<IPAddress> GetLocalIpAddresses()
     {
-        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0);
-        socket.Connect("8.8.8.8", 65530);
-        var endPoint = socket.LocalEndPoint as IPEndPoint;
-        return endPoint?.Address.ToString() ?? "";
+        var addresses = new List<IPAddress>();
+
+        // Способ 1: через Dns (работает на Windows, может не работать на Android)
+        try
+        {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            addresses.AddRange(host.AddressList
+                .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
+                //.Where(ip => !ip.ToString().StartsWith("169.254."))
+                .Where(ip => ip.ToString().StartsWith("192.168.")));
+        }
+        catch { /* игнорируем */ }
+
+        // Способ 2: перебор сетевых интерфейсов (обязателен для Android)
+        try
+        {
+            var interfaces = NetworkInterface.GetAllNetworkInterfaces();
+            foreach (var ni in interfaces)
+            {
+                // Только активные интерфейсы
+                if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                // Исключаем loopback
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+
+                var props = ni.GetIPProperties();
+                foreach (var addr in props.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == AddressFamily.InterNetwork &&
+                        !IPAddress.IsLoopback(addr.Address) &&
+                        addr.Address.ToString().StartsWith("192.168."))
+                        //!addr.Address.ToString().StartsWith("169.254."))
+                    {
+                        addresses.Add(addr.Address);
+                    }
+                }
+            }
+        }
+        catch { /* игнорируем */ }
+
+        // Убираем дубликаты
+        return addresses.Distinct().ToList();
+    }
+
+    public string GetHostName()
+    {
+        string hostName = DeviceInfo.Current.Name; // Environment.MachineName; 
+
+//#if ANDROID
+//        try
+//        {
+//            // Получаем системную службу Android
+//            var bluetoothAdapter = Android.Bluetooth.BluetoothAdapter.DefaultAdapter;
+//            if (bluetoothAdapter != null)
+//            {
+//                // Имя Bluetooth-устройства на Android часто совпадает с его сетевым именем
+//                hostName = bluetoothAdapter.Name;
+//            }
+
+//            // Альтернативный вариант через Java InetAddress
+//            if (string.IsNullOrEmpty(hostName) || hostName == "localhost")
+//            {
+//                var address = Java.Net.InetAddress.LocalHost;
+//                hostName = address.HostName;
+//            }
+//        }
+//        catch (Java.Net.UnknownHostException)
+//        {
+//            hostName = "Unknown";
+//        }
+//#endif
+
+        return hostName;
     }
 
     public void Dispose()
@@ -140,7 +320,8 @@ public class NetworkDiscoveryService : IDisposable
         if (_disposed) return;
         _heartbeatTimer?.Dispose();
         _listenerCts?.Cancel();
-        _udpClient?.Close();
+        foreach (var client in _udpClients)
+            client?.Close();
         _disposed = true;
     }
 }
