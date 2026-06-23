@@ -41,9 +41,9 @@ public partial class MainPage : ContentPage
     //        });
     //    }
     //}
-    private async void OnLabelTapped(object sender, TappedEventArgs e)
+    private async void OnStacLayoutTapped(object sender, TappedEventArgs e)
     {
-        if (sender is Label label && label.BindingContext is Message message)
+        if ((sender is StackLayout label) && label.BindingContext is Message message)
         {
             if (message.IsFileMessage && !string.IsNullOrEmpty(message.FilePath))
             {
@@ -54,13 +54,13 @@ public partial class MainPage : ContentPage
                 }
                 catch (Exception ex)
                 {
-                    await DisplayAlert("Ошибка", $"Не удалось открыть файл: {ex.Message}", "OK");
+                    await DisplayAlertAsync("Ошибка", $"Не удалось открыть файл: {ex.Message}", "OK");
                 }
             }
-            else if (!string.IsNullOrEmpty(label.Text))
+            else if (!string.IsNullOrEmpty(message.Content))
             {
                 // Копируем текст
-                await Clipboard.Default.SetTextAsync(label.Text);
+                await Clipboard.Default.SetTextAsync(message.Content);
             }
         }
     }

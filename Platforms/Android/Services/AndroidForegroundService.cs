@@ -49,7 +49,7 @@ public class AndroidForegroundService : Service
         var notification = new NotificationCompat.Builder(this, "localchat_channel")
             .SetContentTitle("Local Chat")
             .SetContentText("Online in background")
-            .SetSmallIcon(Resource.Drawable.notification_bg_low_normal)
+            .SetSmallIcon(Resource.Drawable.messagesquare)
             .SetOngoing(true)
             .Build();
 
