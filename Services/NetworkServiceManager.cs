@@ -51,4 +51,20 @@ public class NetworkServiceManager
             _lock.Release();
         }
     }
+
+    public async Task RestartAsync()
+    {
+        await _lock.WaitAsync();
+        try
+        {
+            await StopAsync();
+            await StartAsync();
+            _isStarted = true;
+            System.Diagnostics.Debug.WriteLine("Network services restarted.");
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
 }

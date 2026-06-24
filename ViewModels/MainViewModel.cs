@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LocalChat.Models;
 using LocalChat.Services;
+using LocalChat.Views;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 
@@ -39,7 +40,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ICommand SendMessageCommand { get; }
     public ICommand SendFileCommand { get; }
     public ICommand RefreshPeersCommand { get; }
-
+    public ICommand ToSettingsCommand { get; }
     public MainViewModel(DatabaseService dbService, NetworkDiscoveryService discovery,
                          TcpCommunicationService tcpComm, FileTransferService fileTransfer,
                          EncryptionService encryption, NetworkServiceManager networkServiceManager,
@@ -58,6 +59,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         SendMessageCommand = new AsyncRelayCommand(SendMessageAsync);
         SendFileCommand = new AsyncRelayCommand(SendFileAsync);
         RefreshPeersCommand = new AsyncRelayCommand(RefreshPeersAsync);
+        ToSettingsCommand = new AsyncRelayCommand(ToSettingsAsync);
 
         _discovery.PeerDiscovered += OnPeerDiscovered;
         _tcpComm.MessageReceived += OnMessageReceived;
@@ -67,6 +69,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         Task.Run(InitializeAsync);
     }
+
+    
+
     private async Task InitializeAsync()
     {
         try
@@ -201,6 +206,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task RefreshPeersAsync() => await LoadPeersAsync();
 
+    //[RelayCommand]
+    private async Task ToSettingsAsync()
+    {
+        SettingsViewModel? settingsViewModel = MauiProgram.Services?.GetRequiredService<SettingsViewModel>();
+        if (settingsViewModel is not null && App.Current?.Windows[0]?.Page is Page mainPage)
+        {
+            await mainPage.Navigation.PushModalAsync(new SettingsPage(settingsViewModel));
+        }
+    }
     public void Dispose()
     {
         _tcpComm.FileReceived -= OnFileReceived;

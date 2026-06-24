@@ -3,11 +3,12 @@ using CommunityToolkit.Mvvm.Input;
 using LocalChat.Helpers;
 using LocalChat.Models;
 using LocalChat.Services;
+using LocalChat.Views;
 using System.Windows.Input;
 
 namespace LocalChat.ViewModels;
 
-public partial class SettingsViewModel : ObservableObject
+public partial class SettingsViewModel : ObservableObject, IDisposable
 {
     private readonly DatabaseService _dbService;
 
@@ -27,12 +28,21 @@ public partial class SettingsViewModel : ObservableObject
     private string _multicastPort = Constants.MULTICAST_PORT.ToString();
 
     public ICommand SaveCommand { get; }
+    public ICommand BackCommand { get; }
 
     public SettingsViewModel(DatabaseService dbService)
     {
         _dbService = dbService;
         SaveCommand = new AsyncRelayCommand(SaveSettingsAsync);
+        BackCommand = new AsyncRelayCommand(BackAsync);
         LoadSettings();
+    }
+
+    private async Task BackAsync()
+    {
+        //await (Application.Current?.Dispatcher?.DispatchAsync(() => 
+        //    MauiProgram.Services.GetRequiredService<NetworkServiceManager>().RestartAsync()) ?? Task.CompletedTask);
+        await App.Current.MainPage.Navigation.PopModalAsync();
     }
 
     private async void LoadSettings()
@@ -53,5 +63,9 @@ public partial class SettingsViewModel : ObservableObject
         await _dbService.SetSetting(SettingsKeys.MulticastPort, MulticastPort);
         await Application.Current!.Windows[0].Page!.DisplayAlertAsync("Settings", "Saved. Restart app for changes.", "OK"); //MainPage
 
+    }
+
+    public void Dispose()
+    {
     }
 }

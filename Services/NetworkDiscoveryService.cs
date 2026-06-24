@@ -2,13 +2,14 @@ using LocalChat.Models;
 using LocalChat.Helpers;
 #if ANDROID
 using LocalChat.Platforms.Android.Services;
+using Android.Provider;
+using JavaLang = Java.Lang;
 #endif
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-
 namespace LocalChat.Services;
 
 public class NetworkDiscoveryService : IDisposable
@@ -39,7 +40,7 @@ public class NetworkDiscoveryService : IDisposable
         _multicastAddress = Constants.MULTICAST_GROUP;
         _multicastPort = Constants.MULTICAST_PORT;
         _tcpPort = Constants.TCP_PORT;
-        _userName = DeviceInfo.Current.Name; // GetHostName(); // Environment.MachineName;
+        _userName = GetHostName(); // Environment.MachineName;
 #if ANDROID
         _multicastLockService = multicastLockService;
 #endif
@@ -52,7 +53,7 @@ public class NetworkDiscoveryService : IDisposable
         _multicastAddress = await _dbService.GetSetting(SettingsKeys.MulticastAddress) ?? Constants.MULTICAST_GROUP;
         _multicastPort = int.Parse(await _dbService.GetSetting(SettingsKeys.MulticastPort) ?? Constants.MULTICAST_PORT.ToString());
         _tcpPort = int.Parse(await _dbService.GetSetting(SettingsKeys.TcpListenPort) ?? Constants.TCP_PORT.ToString());
-        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? DeviceInfo.Current.Name; //GetHostName();
+        _userName = await _dbService.GetSetting(SettingsKeys.UserName) ?? GetHostName();
 //#if ANDROID
 //        Java.Net.InetAddress.LocalHost.HostName;
 //#else
@@ -181,7 +182,7 @@ public class NetworkDiscoveryService : IDisposable
                 foreach (var client in _udpClients)
                 {
                     await client.SendAsync(data, data.Length, endpoint);
-                    System.Diagnostics.Debug.WriteLine($"SendHeartbeat for {client.Client.LocalEndPoint}");
+                    System.Diagnostics.Debug.WriteLine($"SendHeartbeat for {client.Client.LocalEndPoint} {json}");
                 }
             }
             else //?
@@ -250,7 +251,8 @@ public class NetworkDiscoveryService : IDisposable
             addresses.AddRange(host.AddressList
                 .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
                 //.Where(ip => !ip.ToString().StartsWith("169.254."))
-                .Where(ip => ip.ToString().StartsWith("192.168.")));
+                .Where(ip => ip.ToString().StartsWith("192.168."))
+                .Where(ip => !ip.ToString().EndsWith(".1")));
         }
         catch { /* игнорируем */ }
 
@@ -286,32 +288,24 @@ public class NetworkDiscoveryService : IDisposable
 
     public string GetHostName()
     {
-        string hostName = DeviceInfo.Current.Name; // Environment.MachineName; 
+        string hostName = "";
 
-//#if ANDROID
-//        try
-//        {
-//            // Получаем системную службу Android
-//            var bluetoothAdapter = Android.Bluetooth.BluetoothAdapter.DefaultAdapter;
-//            if (bluetoothAdapter != null)
-//            {
-//                // Имя Bluetooth-устройства на Android часто совпадает с его сетевым именем
-//                hostName = bluetoothAdapter.Name;
-//            }
-
-//            // Альтернативный вариант через Java InetAddress
-//            if (string.IsNullOrEmpty(hostName) || hostName == "localhost")
-//            {
-//                var address = Java.Net.InetAddress.LocalHost;
-//                hostName = address.HostName;
-//            }
-//        }
-//        catch (Java.Net.UnknownHostException)
-//        {
-//            hostName = "Unknown";
-//        }
-//#endif
-
+#if ANDROID
+        System.Diagnostics.Debug.WriteLine($"host: {JavaLang.Runtime.GetRuntime()
+                         .Exec("getprop net.hostname")
+                         .InputStream
+                         .ToString()}");
+        System.Diagnostics.Debug.WriteLine($"host: {Settings.Global.GetString(Android.App.Application.Context.ContentResolver,
+                                            "device_name")}");
+        //hostName = JavaLang.Runtime.GetRuntime()
+        //                 .Exec("getprop net.hostname")
+        //                 .InputStream
+        //                 .ToString();
+        hostName = Settings.Global.GetString(Android.App.Application.Context.ContentResolver,
+        "device_name");
+#else
+        hostName = DeviceInfo.Current.Name; // Environment.MachineName; 
+#endif
         return hostName;
     }
 
