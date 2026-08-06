@@ -12,11 +12,17 @@ public partial class MainPage : ContentPage
         InitializeComponent();
         BindingContext = viewModel;
         _fileStorage = fileStorage;
+        // AppInfo.VersionString вернет значение из $(ApplicationDisplayVersion)
+        string currentVersion = AppInfo.Current.VersionString;
+
+        // Устанавливаем заголовок
+        Title = $"MAUI App v{currentVersion}";
     }
     protected override async void OnAppearing()
     {
         
         base.OnAppearing();
+        
         if (DeviceInfo.Current.Platform == DevicePlatform.Android &&
             OperatingSystem.IsAndroidVersionAtLeast(33))
         {
@@ -24,12 +30,13 @@ public partial class MainPage : ContentPage
             if (status != PermissionStatus.Granted)
                 await DisplayAlertAsync("Notification", "Enable notifications to receive messages in background.", "OK");
         }
+        
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        (BindingContext as MainViewModel)?.Dispose();
+        //(BindingContext as MainViewModel)?.Dispose();
     }
     //private async void OnLabelTapped(object sender, TappedEventArgs e)
     //{
@@ -41,9 +48,10 @@ public partial class MainPage : ContentPage
     //        });
     //    }
     //}
-    private async void OnStacLayoutTapped(object sender, TappedEventArgs e)
+    
+    private async void OnMessageTapped(object sender, TappedEventArgs e)
     {
-        if ((sender is StackLayout label) && label.BindingContext is Message message)
+        if ((sender is VerticalStackLayout tappedMessage) && tappedMessage.BindingContext is Message message)
         {
             if (message.IsFileMessage && !string.IsNullOrEmpty(message.FilePath))
             {
@@ -64,4 +72,10 @@ public partial class MainPage : ContentPage
             }
         }
     }
+
+    //private async void OnToSettingsTapped(object sender, TappedEventArgs e)
+    //{
+    //    var settingsViewModel = MauiProgram.CreateMauiApp().Services.GetRequiredService<SettingsViewModel>();
+    //    await Navigation.PushModalAsync(new SettingsPage(settingsViewModel));
+    //}
 }

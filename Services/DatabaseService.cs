@@ -1,7 +1,6 @@
 using LocalChat.Helpers;
 using LocalChat.Models;
 using SQLite;
-using System.Net;
 
 namespace LocalChat.Services;
 
@@ -13,6 +12,7 @@ public class DatabaseService
 
     public DatabaseService()
     {
+        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
         _dbPath = Path.Combine(FileSystem.AppDataDirectory, "localchat.db3");
         _database = new SQLiteAsyncConnection(_dbPath);
     }

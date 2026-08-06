@@ -11,7 +11,7 @@
             </ResourceDictionary.MergedDictionaries>
             <converters:BoolToAlignmentConverter x:Key="BoolToAlignment" />
             <converters:BoolToColorConverter x:Key="BoolToColor" />
-
+            <converters:BoolToCornerRadiusConverter x:Key="BoolToCornerRadiusConverter" />
             <!-- Базовые цвета (опционально) -->
             <Color x:Key="Primary">#512BD4</Color>
             <Color x:Key="White">White</Color>

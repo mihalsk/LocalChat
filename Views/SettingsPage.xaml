@@ -2,13 +2,75 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="LocalChat.Views.SettingsPage"
-             Title="Settings">
+             Title="Settings"
+             NavigationPage.HasNavigationBar="True">
     <VerticalStackLayout Spacing="15" Padding="20">
+        <Border BackgroundColor="#18222D"
+                StrokeThickness="0">
+            <ImageButton
+                 Source="back.png"
+                 Padding="7"
+                 HeightRequest="12"
+                 WidthRequest="12"
+                 BackgroundColor="Transparent"
+                 Command="{Binding BackCommand}">
+                <!--Clicked="OnToSettingsTapped"-->
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                            Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                            Value="0.9" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="PointerOver" />
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </VisualStateManager.VisualStateGroups>
+            </ImageButton>
+        </Border>
         <Entry Placeholder="User Name" Text="{Binding UserName}"/>
         <Entry Placeholder="Encryption Password" Text="{Binding EncryptionPassword}" IsPassword="True"/>
         <Entry Placeholder="TCP Port" Text="{Binding TcpPort}" Keyboard="Numeric"/>
         <Entry Placeholder="Multicast Address" Text="{Binding MulticastAddress}"/>
         <Entry Placeholder="Multicast Port" Text="{Binding MulticastPort}" Keyboard="Numeric"/>
-        <Button Text="Save" Command="{Binding SaveCommand}" BackgroundColor="Green"/>
+        <Border BackgroundColor="#18222D"
+                StrokeThickness="0">
+            <ImageButton
+                     Source="savealt.png"
+                     Padding="7"
+                     HeightRequest="12"
+                     WidthRequest="12"
+                     BackgroundColor="Transparent"
+                     Command="{Binding SaveCommand}">
+                <!--Clicked="OnToSettingsTapped"-->
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                                    Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Property="Scale"
+                                    Value="0.9" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="PointerOver" />
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </VisualStateManager.VisualStateGroups>
+            </ImageButton>
+        </Border>
     </VerticalStackLayout>
 </ContentPage>

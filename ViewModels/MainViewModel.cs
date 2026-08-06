@@ -2,7 +2,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LocalChat.Models;
 using LocalChat.Services;
+using LocalChat.Views;
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
 namespace LocalChat.ViewModels;
@@ -10,12 +12,15 @@ namespace LocalChat.ViewModels;
 public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly DatabaseService _dbService;
-    private readonly NetworkDiscoveryService _discovery;
+    //private readonly NetworkDiscoveryService _discovery;
     private readonly TcpCommunicationService _tcpComm;
     private readonly FileTransferService _fileTransfer;
     private readonly EncryptionService _encryption;
     private readonly NetworkServiceManager _networkServiceManager;
     private readonly IFileStorageService _fileStorage;
+
+    private readonly IServiceProvider _serviceProvider;
+
     private Timer? _onlineStatusTimer;
 
     [ObservableProperty]
@@ -39,34 +44,40 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ICommand SendMessageCommand { get; }
     public ICommand SendFileCommand { get; }
     public ICommand RefreshPeersCommand { get; }
-
-    public MainViewModel(DatabaseService dbService, NetworkDiscoveryService discovery,
-                         TcpCommunicationService tcpComm, FileTransferService fileTransfer,
-                         EncryptionService encryption, NetworkServiceManager networkServiceManager,
-                         IFileStorageService fileStorage
-        )
+    public ICommand ToSettingsCommand { get; }
+    public MainViewModel(DatabaseService dbService, 
+                         FileTransferService fileTransfer,
+                         EncryptionService encryption, 
+                         NetworkServiceManager networkServiceManager,
+                         IFileStorageService fileStorage,
+                         IServiceProvider serviceProvider
+        ) 
     {
         _dbService = dbService;
-        _discovery = discovery;
-        _tcpComm = tcpComm;
+        
         _fileTransfer = fileTransfer;
         _encryption = encryption;
         _networkServiceManager = networkServiceManager;
+        System.Diagnostics.Debug.WriteLine(RuntimeHelpers.GetHashCode(_networkServiceManager));
         _fileStorage = fileStorage;
-        
+        _serviceProvider = serviceProvider;
 
         SendMessageCommand = new AsyncRelayCommand(SendMessageAsync);
         SendFileCommand = new AsyncRelayCommand(SendFileAsync);
         RefreshPeersCommand = new AsyncRelayCommand(RefreshPeersAsync);
+        ToSettingsCommand = new AsyncRelayCommand(ToSettingsAsync);
 
-        _discovery.PeerDiscovered += OnPeerDiscovered;
-        _tcpComm.MessageReceived += OnMessageReceived;
-        _tcpComm.FileReceived += OnFileReceived;
-
+        // Строго те же подписки, но теперь через единый менеджер
+        _networkServiceManager.PeerDiscovered += OnPeerDiscovered;
+        _networkServiceManager.MessageReceived += OnMessageReceived;
+        _networkServiceManager.FileReceived += OnFileReceived;
         _onlineStatusTimer = new Timer(UpdateOnlineStatus, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
         Task.Run(InitializeAsync);
     }
+
+    
+
     private async Task InitializeAsync()
     {
         try
@@ -169,7 +180,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            await _tcpComm.SendMessageAsync(SelectedPeer, NewMessageText);
+            await _networkServiceManager.SendMessageAsync(SelectedPeer, NewMessageText);
             var msg = new Message
             {
                 SenderPeerId = App.PeerId,
@@ -201,11 +212,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task RefreshPeersAsync() => await LoadPeersAsync();
 
+    private async Task ToSettingsAsync()
+    {
+        // Извлекаем готовую страницу из контейнера со всеми её зависимостями
+        var settingsPage = _serviceProvider.GetRequiredService<SettingsPage>();
+
+        // Безопасно открываем её модально
+        if (Application.Current?.MainPage?.Navigation is INavigation navigation)
+        {
+            await navigation.PushModalAsync(settingsPage);
+        }
+    }
     public void Dispose()
     {
-        _tcpComm.FileReceived -= OnFileReceived;
-        _discovery.PeerDiscovered -= OnPeerDiscovered;
-        _tcpComm.MessageReceived -= OnMessageReceived;
+        _networkServiceManager.FileReceived -= OnFileReceived;
+        _networkServiceManager.PeerDiscovered -= OnPeerDiscovered;
+        _networkServiceManager.MessageReceived -= OnMessageReceived;
         _networkServiceManager.StopAsync().Wait(); // остановка через менеджер
     }
 }
