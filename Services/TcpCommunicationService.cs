@@ -95,8 +95,10 @@ public class TcpCommunicationService
     {
         _listenerCts?.Cancel();
         _listener?.Stop();
-        //_listener?.Dispose();
-        await Task.CompletedTask;
+        _listener?.Dispose();   // рекомендуется явно освободить (?)
+        _listener = null;
+        _initialized = false;
+        await Task.Delay(100); //Task.CompletedTask;
     }
 
     private async Task AcceptClientsAsync(CancellationToken token)
@@ -200,11 +202,6 @@ public class TcpCommunicationService
 
     private async Task ProcessTextMessage(string json)
     {
-        // Удаляем BOM и обрезаем пробелы
-        //if (json.StartsWith("\uFEFF"))
-        //    json = json.Substring(1);
-        //json = json.Trim();
-
         try
         {
             var msgDto = JsonSerializer.Deserialize<MessageDto>(json);

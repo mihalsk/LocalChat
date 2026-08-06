@@ -34,7 +34,7 @@ public static class MauiProgram
         
 
         builder.Services.AddSingleton<FileTransferService>();
-        builder.Services.AddSingleton<MainViewModel>();
+        builder.Services.AddTransient<MainViewModel>();
         builder.Services.AddTransient<SettingsViewModel>();
         builder.Services.AddTransient<MainPage>();
         builder.Services.AddTransient<SettingsPage>();

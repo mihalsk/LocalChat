@@ -1,152 +1,129 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-	  <TargetFrameworks>net10.0-android</TargetFrameworks>
-	  <!--<TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>-->
-	  <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
-	  <!--<WindowsPackageType>MSIX</WindowsPackageType>
-	  <OutputType>exe</OutputType>
-	  <Nullable>enable</Nullable>
-	  <EnableMsixTooling>true</EnableMsixTooling>-->
-	  <OutputType>Exe</OutputType>
-	<UseWinUI>true</UseWinUI>
-    <SingleProject>true</SingleProject>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <!-- Целевые платформы -->
+        <TargetFrameworks>net10.0-android;net10.0-windows10.0.19041.0</TargetFrameworks>
+        <!-- <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks> -->
 
-    <!-- MAUI properties -->
-    <UseMaui>true</UseMaui>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
-    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</TargetPlatformMinVersion>
-	<RootNamespace>LocalChat</RootNamespace>
-	<ApplicationTitle>Croccodillo</ApplicationTitle>
-    <ApplicationId>com.bamburillio.lanchat</ApplicationId>
-    <ApplicationVersion>1</ApplicationVersion>
-    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+        <!-- Общие настройки -->
+        <OutputType>Exe</OutputType>
+        <RootNamespace>LocalChat</RootNamespace>
+        <SingleProject>true</SingleProject>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
 
-    <AndroidPackageFormat>apk</AndroidPackageFormat>
-    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
-    <Platforms>AnyCPU;x64;ARM64</Platforms>
-    <AndroidSigningKeyStore>ornold.keystore</AndroidSigningKeyStore>
-    <AssemblyTitle>LocalChat</AssemblyTitle>
-    <GenerateAppInstallerFile>True</GenerateAppInstallerFile>
-    <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
-    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
-    <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
-    <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
-    <GenerateTestArtifacts>False</GenerateTestArtifacts>
-    <AppInstallerUri>C:\Project\LocalChat\bin\Release\publish</AppInstallerUri>
-    <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-  </PropertyGroup>
-	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
-		<WindowsPackageType>None</WindowsPackageType>
-		<EnableMsixTooling>true</EnableMsixTooling>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-android|AnyCPU'">
-	  <AndroidKeyStore>True</AndroidKeyStore>
-	  <AndroidSigningStorePass>12345678</AndroidSigningStorePass>
-	  <AndroidSigningKeyAlias>ornold</AndroidSigningKeyAlias>
-	  <AndroidSigningKeyPass>12345678</AndroidSigningKeyPass>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-android|x64'">
-	  <AndroidKeyStore>True</AndroidKeyStore>
-	  <AndroidSigningStorePass>12345678</AndroidSigningStorePass>
-	  <AndroidSigningKeyAlias>ornold</AndroidSigningKeyAlias>
-	  <AndroidSigningKeyPass>12345678</AndroidSigningKeyPass>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-android|ARM64'">
-	  <AndroidKeyStore>True</AndroidKeyStore>
-	  <AndroidSigningStorePass>12345678</AndroidSigningStorePass>
-	  <AndroidSigningKeyAlias>ornold</AndroidSigningKeyAlias>
-	  <AndroidSigningKeyPass>12345678</AndroidSigningKeyPass>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-android|AnyCPU'">
-	  <AndroidKeyStore>True</AndroidKeyStore>
-	  <AndroidSigningStorePass>12345678</AndroidSigningStorePass>
-	  <AndroidSigningKeyAlias>ornold</AndroidSigningKeyAlias>
-	  <AndroidSigningKeyPass>12345678</AndroidSigningKeyPass>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-android|x64'">
-	  <AndroidKeyStore>True</AndroidKeyStore>
-	  <AndroidSigningStorePass>12345678</AndroidSigningStorePass>
-	  <AndroidSigningKeyAlias>ornold</AndroidSigningKeyAlias>
-	  <AndroidSigningKeyPass>12345678</AndroidSigningKeyPass>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-android|ARM64'">
-	  <AndroidKeyStore>True</AndroidKeyStore>
-	  <AndroidSigningStorePass>12345678</AndroidSigningStorePass>
-	  <AndroidSigningKeyAlias>ornold</AndroidSigningKeyAlias>
-	  <AndroidSigningKeyPass>12345678</AndroidSigningKeyPass>
-	</PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.71" />
-    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.71" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="SourceGear.sqlite3" Version="3.50.4.5" />
-    <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
-    <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
-	<PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
-	<PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.50.4.5" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.9" />
-  </ItemGroup>
+        <!-- MAUI -->
+        <UseMaui>true</UseMaui>
+        <!-- ⚠️ UseWinUI УБРАН: MAUI уже включает WinUI, одновременное использование вызывает 0x80008096 -->
 
-  <ItemGroup>
-    <MauiIcon Include="Resources\AppIcon\appicon.svg">
-      <Color>#512BD4</Color>
-      <ForegroundFile>Resources\AppIcon\appiconfg.svg</ForegroundFile>
-    </MauiIcon>
-    <!--<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />-->
-    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
-    <MauiImage Include="Resources\Images\*" />
-	<MauiImage Include="Resources\SvgIcon\*" BaseSize="20,20" />
-    <MauiFont Include="Resources\Fonts\*" />
-    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
+        <!-- Информация о приложении -->
+        <ApplicationTitle>Croccodillo</ApplicationTitle>
+        <ApplicationId>com.bamburillio.lanchat</ApplicationId>
+        <AssemblyTitle>LocalChat</AssemblyTitle>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
-    <GoogleServicesJson Include="Platforms\Android\google-services.json" Condition="Exists('Platforms\Android\google-services.json')" />
-  </ItemGroup>
+        <!-- Версионирование по дате сборки (ГГГГММДД + ЧЧММ) -->
+        <BuildDate>$([System.DateTime]::UtcNow.ToString("yyyyMMdd"))</BuildDate>
+        <BuildTime>$([System.DateTime]::UtcNow.ToString("HHmm"))</BuildTime>
+        <MajorVersion>1</MajorVersion>
+        <MinorVersion>$(BuildDate.Substring(4))</MinorVersion>
+        <BuildVersion>$(BuildTime)</BuildVersion>
+        <DisplayVersionString>$(MajorVersion).$(MinorVersion).$(BuildVersion)</DisplayVersionString>
+        <ApplicationDisplayVersion>$(DisplayVersionString)</ApplicationDisplayVersion>
+        <ApplicationVersion>1</ApplicationVersion>
+        <AssemblyVersion>$(DisplayVersionString)</AssemblyVersion>
+        <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 
-  <ItemGroup>
-    <AndroidResource Include="Platforms\Android\Resources\**\*.xml" />
-  </ItemGroup>
+        <!-- Платформы -->
+        <Platforms>AnyCPU;x64;ARM64</Platforms>
+        <!-- ARM32 удалён: Google Play с 2019 требует 64-бит, а для Windows MAUI он не нужен -->
 
-  <ItemGroup>
-    <Compile Remove="AppShell.xaml.cs" />
-  </ItemGroup>
+        <!-- Android -->
+        <AndroidPackageFormat>apk</AndroidPackageFormat>
+        <AndroidSigningKeyStore>ornold.keystore</AndroidSigningKeyStore>
 
-  <ItemGroup>
-    <MauiXaml Remove="AppShell.xaml" />
-    <MauiXaml Remove="Resources\Styles\Styles — копия.xaml" />
-    <MauiXaml Remove="Resources\Styles\Styles---.xaml" />
-  </ItemGroup>
+        <!-- Windows -->
+        <WindowsPackageType>None</WindowsPackageType>
+        <!-- EnableMsixTooling УБРАН: при WindowsPackageType=None он не нужен и вызывает конфликт -->
 
-  <ItemGroup>
-    <Folder Include="Platforms\Android\Resources\Drawable\" />
-  </ItemGroup>
+        <Deterministic>false</Deterministic>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <MauiXaml Update="Platforms\Android\Resources\Styles\Styles.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </MauiXaml>
-    <MauiXaml Update="Platforms\Windows\App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </MauiXaml>
-    <MauiXaml Update="Resources\Styles\Colors.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </MauiXaml>
-    <MauiXaml Update="Resources\Styles\Styles.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </MauiXaml>
-  </ItemGroup>
+    <!-- Минимальные версии ОС -->
+    <PropertyGroup>
+        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
+        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
+        <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</TargetPlatformMinVersion>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <None Update="Platforms\Android\Resources\Styles\Styles.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </None>
-    <None Update="Resources\Styles\Styles.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </None>
-  </ItemGroup>
+    <!-- Android: RuntimeIdentifiers + настройки сборки (ОДИН блок вместо 8 дублирующихся) -->
+    <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+        <RuntimeIdentifiers>android-arm;android-arm64;android-x86;android-x64</RuntimeIdentifiers>
+        <!-- EmbedAssembliesIntoApk и AndroidEnableMultiDex в .NET 10 включены по умолчанию -->
+    </PropertyGroup>
+
+    <!-- Подпись Android: ОДИН блок для всех конфигураций -->
+    <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+        <AndroidKeyStore>True</AndroidKeyStore>
+        <AndroidSigningStorePass>12345678</AndroidSigningStorePass>
+        <AndroidSigningKeyAlias>ornold</AndroidSigningKeyAlias>
+        <AndroidSigningKeyPass>12345678</AndroidSigningKeyPass>
+    </PropertyGroup>
+
+    <!-- Release-оптимизации для Android -->
+    <PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(TargetFramework)' == 'net10.0-android'">
+        <AndroidLinkTool>r8</AndroidLinkTool>
+        <RunAOTCompilation>False</RunAOTCompilation>
+        <EnableLLVM>False</EnableLLVM>
+    </PropertyGroup>
+
+    <!-- NuGet-пакеты -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
+        <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.90" />
+        <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.90" />
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+        <PackageReference Include="sqlite-net-pcl" Version="1.11.285" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.10" />
+    </ItemGroup>
+
+    <!-- Ресурсы MAUI -->
+    <ItemGroup>
+        <MauiIcon Include="Resources\AppIcon\appicon.svg">
+            <Color>#512BD4</Color>
+            <ForegroundFile>Resources\AppIcon\appiconfg.svg</ForegroundFile>
+        </MauiIcon>
+        <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+        <MauiImage Include="Resources\Images\*" />
+        <MauiImage Include="Resources\SvgIcon\*" BaseSize="20,20" />
+        <MauiFont Include="Resources\Fonts\*" />
+        <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
+
+    <!-- Android-специфичные ресурсы -->
+    <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+        <GoogleServicesJson Include="Platforms\Android\google-services.json" Condition="Exists('Platforms\Android\google-services.json')" />
+        <AndroidResource Include="Platforms\Android\Resources\**\*.xml" />
+    </ItemGroup>
+
+    <!-- XAML-стили -->
+    <ItemGroup>
+        <MauiXaml Update="Platforms\Android\Resources\Styles\Styles.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </MauiXaml>
+        <MauiXaml Update="Platforms\Windows\App.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </MauiXaml>
+        <MauiXaml Update="Resources\Styles\Colors.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </MauiXaml>
+        <MauiXaml Update="Resources\Styles\Styles.xaml">
+            <Generator>MSBuild:Compile</Generator>
+        </MauiXaml>
+        <MauiXaml Remove="Resources\Styles\Styles — копия.xaml" />
+        <MauiXaml Remove="Resources\Styles\Styles---.xaml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Platforms\Android\Resources\Drawable\" />
+    </ItemGroup>
 </Project>

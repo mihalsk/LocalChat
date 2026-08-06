@@ -24,7 +24,12 @@ public class NetworkDiscoveryService : IDisposable
     private string _userName;
     private List<UdpClient> _udpClients = new();
     private Timer? _heartbeatTimer;
+
     private CancellationTokenSource? _listenerCts;
+
+    private CancellationTokenSource? _heartbeatCts;
+    private Task? _heartbeatTask;
+
     private bool _disposed;
     private bool _initialized = false;
 
@@ -67,6 +72,26 @@ public class NetworkDiscoveryService : IDisposable
         if (!_initialized)
             await InitializeAsync();
 
+        // Гарантируем, что нет висящих клиентов
+        if (_udpClients.Any())
+        {
+            foreach (var c in _udpClients) c?.Close();
+            _udpClients.Clear();
+        }
+        if (_heartbeatCts != null)
+        {
+            _heartbeatCts.Cancel();
+            if (_heartbeatTask != null)
+            {
+                try { await _heartbeatTask; }
+                catch (OperationCanceledException) { /* ожидаемо */ }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Heartbeat stop error: {ex}"); }
+                _heartbeatTask = null;
+            }
+            _heartbeatCts.Dispose();
+            _heartbeatCts = null;
+        }
+        _heartbeatCts = new CancellationTokenSource();
         _listenerCts = new CancellationTokenSource();
 
         var localIps = GetLocalIpAddresses();
@@ -87,19 +112,28 @@ public class NetworkDiscoveryService : IDisposable
         {
             try
             {
+                IPEndPoint ipAny = new IPEndPoint(
+#if ANDROID
+                    IPAddress.Any,
+#elif WINDOWS
+                    localIp, 
+#endif
+                    _multicastPort); //IPAddress.Any, _multicastPort);
                 var udpClient = new UdpClient();
+                
                 udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                
+                udpClient.Client.Bind(ipAny);
+
                 var mcastOption = new MulticastOption(multicastGroup, localIp);
                 udpClient.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, mcastOption);
-                udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, _multicastPort));
-                
-
+                //udpClient.JoinMulticastGroup(multicastGroup, IPAddress.Any);
                 //var isMultiCast = udpClient?.Client?.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface);
                 // if (isMultiCast is not null && !(bool)isMultiCast)
                 //udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastInterface, true);
                 //udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.MulticastLoopback, true);
                 //udpClient.Client.Bind(new IPEndPoint(localIp, _multicastPort));
-                //udpClient.JoinMulticastGroup(multicastGroup, localIp);
+
 
                 _udpClients.Add(udpClient);
                 System.Diagnostics.Debug.WriteLine($"Multicast listener on {localIp}:{_multicastPort}");
@@ -133,18 +167,32 @@ public class NetworkDiscoveryService : IDisposable
             _ = Task.Run(() => ListenForHeartbeatsAsync(client, _listenerCts.Token));
         }
 
-        _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        //_heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        //_heartbeatTimer = new Timer(_ => SendHeartbeat(_heartbeatCts.Token), null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        _heartbeatTask = Task.Run(() => HeartbeatLoopAsync(_heartbeatCts.Token));
     }
 
     public async Task StopAsync()
     {
-        _heartbeatTimer?.Dispose();
+        // Остановить heartbeat
+        if (_heartbeatCts != null)
+        {
+            _heartbeatCts.Cancel();
+            if (_heartbeatTask != null)
+            {
+                try { await _heartbeatTask; }
+                catch (OperationCanceledException) { }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Heartbeat stop error: {ex}"); }
+                _heartbeatTask = null;
+            }
+            _heartbeatCts.Dispose();
+            _heartbeatCts = null;
+        }
         _listenerCts?.Cancel();
         foreach (var client in _udpClients)
-        {
             client?.Close();
-        }
         _udpClients.Clear();
+        _initialized = false;
 #if ANDROID
         if (_multicastLockService != null)
         {
@@ -155,20 +203,34 @@ public class NetworkDiscoveryService : IDisposable
         await Task.CompletedTask;
     }
 
-    private async void SendHeartbeat(object? state)
+    private async Task HeartbeatLoopAsync(CancellationToken token)
     {
+        while (!token.IsCancellationRequested)
+        {
+            await SendHeartbeatAsync(token);
+            if (token.IsCancellationRequested)
+                break;
+            await Task.Delay(5000, token);
+        }
+    }
+
+    private async Task SendHeartbeatAsync(CancellationToken token)
+    {
+        if (token.IsCancellationRequested) return;
         try
         {
+            var clients = _udpClients.ToList();
+            if (!clients.Any()) return;
+
             var localIps = GetLocalIpAddresses();
             if (!localIps.Any()) return;
 
             var localIp = localIps.First().ToString();
-
             var heartbeat = new
             {
                 Type = "heartbeat",
                 PeerId = App.PeerId,
-                Name = _userName,
+                Name = _userName, // актуальное имя из настроек
                 IpAddress = localIp,
                 TcpPort = _tcpPort,
                 Timestamp = DateTime.UtcNow
@@ -177,21 +239,14 @@ public class NetworkDiscoveryService : IDisposable
             var data = Encoding.UTF8.GetBytes(json);
             var endpoint = new IPEndPoint(IPAddress.Parse(_multicastAddress), _multicastPort);
 
-            if (_udpClients.Count > 0)
+            foreach (var client in clients)
             {
-                foreach (var client in _udpClients)
-                {
-                    await client.SendAsync(data, data.Length, endpoint);
-                    System.Diagnostics.Debug.WriteLine($"SendHeartbeat for {client.Client.LocalEndPoint} {json}");
-                }
-            }
-            else //?
-            {
-                using var tempClient = new UdpClient();
-                tempClient.JoinMulticastGroup(IPAddress.Parse(_multicastAddress));
-                await tempClient.SendAsync(data, data.Length, endpoint);
+                token.ThrowIfCancellationRequested();
+                await client.SendAsync(data, data.Length, endpoint);
+                System.Diagnostics.Debug.WriteLine($"SendHeartbeat for {client.Client.LocalEndPoint} {json}");
             }
         }
+        catch (OperationCanceledException) { /* ожидаемо */ }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"SendHeartbeat error: {ex.Message}"); }
     }
 

@@ -4,6 +4,7 @@ using LocalChat.Helpers;
 using LocalChat.Models;
 using LocalChat.Services;
 using LocalChat.Views;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
 namespace LocalChat.ViewModels;
@@ -11,6 +12,7 @@ namespace LocalChat.ViewModels;
 public partial class SettingsViewModel : ObservableObject, IDisposable
 {
     private readonly DatabaseService _dbService;
+    private readonly NetworkServiceManager _networkServiceManager;
 
     [ObservableProperty]
     private string _userName = string.Empty;
@@ -30,9 +32,11 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     public ICommand SaveCommand { get; }
     public ICommand BackCommand { get; }
 
-    public SettingsViewModel(DatabaseService dbService)
+    public SettingsViewModel(DatabaseService dbService, NetworkServiceManager networkServiceManager)
     {
         _dbService = dbService;
+        _networkServiceManager = networkServiceManager;
+        System.Diagnostics.Debug.WriteLine(RuntimeHelpers.GetHashCode(_networkServiceManager));
         SaveCommand = new AsyncRelayCommand(SaveSettingsAsync);
         BackCommand = new AsyncRelayCommand(BackAsync);
         LoadSettings();
@@ -61,8 +65,19 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         await _dbService.SetSetting(SettingsKeys.TcpListenPort, TcpPort);
         await _dbService.SetSetting(SettingsKeys.MulticastAddress, MulticastAddress);
         await _dbService.SetSetting(SettingsKeys.MulticastPort, MulticastPort);
-        await Application.Current!.Windows[0].Page!.DisplayAlertAsync("Settings", "Saved. Restart app for changes.", "OK"); //MainPage
+        // Перезапускаем сетевые службы с новыми настройками
+        try
+        {
+            await _networkServiceManager.RestartAsync();
+            await Application.Current!.Windows[0].Page!.DisplayAlertAsync("Настройки", "Настройки сохранены, сеть перезапущена.", "OK");
+        }
+        catch (Exception ex)
+        {
+            await Application.Current!.Windows[0].Page!.DisplayAlertAsync("Ошибка", $"Не удалось перезапустить сеть: {ex.Message}", "OK");
+        }
 
+        // Закрываем окно настроек
+        await App.Current.MainPage.Navigation.PopModalAsync();
     }
 
     public void Dispose()

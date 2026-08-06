@@ -12,6 +12,11 @@ public partial class MainPage : ContentPage
         InitializeComponent();
         BindingContext = viewModel;
         _fileStorage = fileStorage;
+        // AppInfo.VersionString вернет значение из $(ApplicationDisplayVersion)
+        string currentVersion = AppInfo.Current.VersionString;
+
+        // Устанавливаем заголовок
+        Title = $"MAUI App v{currentVersion}";
     }
     protected override async void OnAppearing()
     {
