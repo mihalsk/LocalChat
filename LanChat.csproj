@@ -3,10 +3,9 @@
         <!-- Целевые платформы -->
         <TargetFrameworks>net10.0-android;net10.0-windows10.0.19041.0</TargetFrameworks>
         <!-- <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks> -->
-
         <!-- Общие настройки -->
         <OutputType>Exe</OutputType>
-        <RootNamespace>LocalChat</RootNamespace>
+        <RootNamespace>LanChat</RootNamespace>
         <SingleProject>true</SingleProject>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
@@ -17,10 +16,12 @@
         <!-- ⚠️ UseWinUI УБРАН: MAUI уже включает WinUI, одновременное использование вызывает 0x80008096 -->
 
         <!-- Информация о приложении -->
-        <ApplicationTitle>Croccodillo</ApplicationTitle>
+        <ApplicationTitle>LanChat</ApplicationTitle>
         <ApplicationId>com.bamburillio.lanchat</ApplicationId>
-        <AssemblyTitle>LocalChat</AssemblyTitle>
+        <AssemblyTitle>LanChat</AssemblyTitle>
 
+		<!-- Это значение подставится в Publisher Display Name для Windows -->
+		<ApplicationPublisher>bamburillio</ApplicationPublisher>
         <!-- Версионирование по дате сборки (ГГГГММДД + ЧЧММ) -->
         <BuildDate>$([System.DateTime]::UtcNow.ToString("yyyyMMdd"))</BuildDate>
         <BuildTime>$([System.DateTime]::UtcNow.ToString("HHmm"))</BuildTime>
@@ -44,7 +45,7 @@
         <!-- Windows -->
         <WindowsPackageType>None</WindowsPackageType>
         <!-- EnableMsixTooling УБРАН: при WindowsPackageType=None он не нужен и вызывает конфликт -->
-
+		<EnableWinUIApplicationContextMenu>false</EnableWinUIApplicationContextMenu>
         <Deterministic>false</Deterministic>
     </PropertyGroup>
 
@@ -54,7 +55,10 @@
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</TargetPlatformMinVersion>
     </PropertyGroup>
-
+	<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+		<DisableWinUiTemplatesGeneratedMain>true</DisableWinUiTemplatesGeneratedMain>
+		<StartupObject>LocalChat.WinUI.Program</StartupObject>
+	</PropertyGroup>
     <!-- Android: RuntimeIdentifiers + настройки сборки (ОДИН блок вместо 8 дублирующихся) -->
     <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
         <RuntimeIdentifiers>android-arm;android-arm64;android-x86;android-x64</RuntimeIdentifiers>

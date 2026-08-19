@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace LocalChat.Helpers
+namespace LanChat.Helpers
 {
     public static class Constants
     {

@@ -2,27 +2,32 @@ using Android.App;
 using Android.Content;
 using Android.OS;
 using AndroidX.Core.App;
-namespace LocalChat;
+namespace LanChat.Platforms.Android;
 
 public static class NotificationHelper
 {
-    private const string ChannelId = "localchat_channel";
-    private const string ChannelName = "Local Chat Messages";
-
+    public const string ChannelId = "lanchat_channel";
+    public const string SilentChannelId = "lanchat_channel_silent";
     public static void CreateNotificationChannel(Context context)
     {
         if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
         {
-            var channel = new NotificationChannel(ChannelId, ChannelName, NotificationImportance.High);
             var manager = (NotificationManager)context.GetSystemService(Context.NotificationService);
-            manager.CreateNotificationChannel(channel);
+
+            // Канал для чата (со звуком/всплытием)
+            var chatChannel = new NotificationChannel(ChannelId, "Чат - Сообщения", NotificationImportance.High);
+            manager.CreateNotificationChannel(chatChannel);
+
+            // Канал для Фонового сервиса (тихий)
+            var serviceChannel = new NotificationChannel(SilentChannelId, "Работа в фоне", NotificationImportance.Low);
+            manager.CreateNotificationChannel(serviceChannel);
         }
     }
 
     public static void ShowMessageNotification(Context context, string title, string message)
     {
         var builder = new NotificationCompat.Builder(context, ChannelId)
-            .SetSmallIcon(Microsoft.Maui.Resource.Drawable.notification_icon_background)
+            .SetSmallIcon(Resource.Drawable.messagesquare)
             .SetContentTitle(title)
             .SetContentText(message)
             .SetPriority(NotificationCompat.PriorityHigh)

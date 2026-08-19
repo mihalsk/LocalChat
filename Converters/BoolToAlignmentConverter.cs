@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using Microsoft.Maui.Controls;
 
-namespace LocalChat.Converters;
+namespace LanChat.Converters;
 
 public class BoolToAlignmentConverter : IValueConverter
 {

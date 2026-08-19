@@ -1,7 +1,5 @@
-using LocalChat.Models;
-using LocalChat.Helpers;
 #if ANDROID
-using LocalChat.Platforms.Android.Services;
+using LanChat.Platforms.Android.Services;
 using Android.Provider;
 using JavaLang = Java.Lang;
 #endif
@@ -10,7 +8,10 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-namespace LocalChat.Services;
+using LanChat.Models;
+using LanChat.Helpers;
+using LanChat;
+namespace LanChat.Services;
 
 public class NetworkDiscoveryService : IDisposable
 {
@@ -276,17 +277,26 @@ public class NetworkDiscoveryService : IDisposable
                     LastSeen = root.GetProperty("Timestamp").GetDateTime()
                 };
                 System.Diagnostics.Debug.WriteLine($"{peer.IpAddress}:{peer.TcpPort}");
-                var existing = await _dbService.GetPeerByIpAddressAsync(peer.IpAddress); //_dbService.GetPeerByPeerIdAsync(peer.PeerId)
-                if (existing == null)
-                    await _dbService.SavePeerAsync(peer);
+                var existingPeer = await _dbService.GetPeerByIpAddressAsync(peer.IpAddress); //_dbService.GetPeerByPeerIdAsync(peer.PeerId)
+                if (existingPeer != null)
+                {
+                    // Если изменились ключевые данные (используется наш Equals)
+                    if (existingPeer != peer)
+                    {
+                        existingPeer.Name = peer.Name;
+                        existingPeer.IpAddress = peer.IpAddress;
+                        existingPeer.TcpPort = peer.TcpPort;
+                    }
+
+                    // Время обновляем всегда, это пересчитает IsOnline -> true
+                    existingPeer.LastSeen = DateTime.UtcNow;
+                }
                 else
                 {
-                    peer.Id = existing.Id;
+                    // Новый собеседник появился в сети
+                    peer.LastSeen = DateTime.UtcNow;
                     await _dbService.SavePeerAsync(peer);
-                    //await _dbService.UpdatePeerInfo(peer);  //_dbService.UpdatePeerLastSeen(peer.PeerId, peer.LastSeen);
-                }
-                    
-
+                }                
                 PeerDiscovered?.Invoke(peer);
             }
             catch (OperationCanceledException ex) { System.Diagnostics.Debug.WriteLine($"Listen error: {ex.Message}"); break; }

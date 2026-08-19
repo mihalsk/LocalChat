@@ -1,6 +1,6 @@
 using SQLite;
 
-namespace LocalChat.Models;
+namespace LanChat.Models;
 
 [Table("Messages")]
 public class Message

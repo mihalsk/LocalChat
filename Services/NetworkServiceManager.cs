@@ -1,7 +1,6 @@
-﻿using LocalChat.Models;
-using LocalChat.Services;
+﻿using LanChat.Models;
 
-namespace LocalChat.Services;
+namespace LanChat.Services;
 
 public class NetworkServiceManager
 {

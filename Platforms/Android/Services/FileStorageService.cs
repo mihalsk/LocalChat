@@ -6,15 +6,16 @@ using AndroidX.Core.Content;
 using AndroidNet = Android.Net;
 using JavaIO = Java.IO;
 using SystemIO = System.IO;
-using LocalChat.Services;
+using LanChat.Services;
 using System.IO;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using FileProvider = Microsoft.Maui.Storage.FileProvider;
 using Android.App;
+using LanChat.Services;
 
-namespace LocalChat.Platforms.Android.Services;
+namespace LanChat.Platforms.Android.Services;
 
 public class FileStorageService : IFileStorageService
 {

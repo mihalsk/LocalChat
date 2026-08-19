@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace LocalChat.Services;
+namespace LanChat.Services;
 
 public class EncryptionService
 {

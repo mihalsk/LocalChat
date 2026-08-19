@@ -1,13 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LocalChat.Models;
+using LanChat.Models;
+using LanChat.Services;
+using LanChat.Views;
 using LocalChat.Services;
-using LocalChat.Views;
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
-namespace LocalChat.ViewModels;
+namespace LanChat.ViewModels;
 
 public partial class MainViewModel : ObservableObject, IDisposable
 {
@@ -18,9 +19,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly EncryptionService _encryption;
     private readonly NetworkServiceManager _networkServiceManager;
     private readonly IFileStorageService _fileStorage;
-
     private readonly IServiceProvider _serviceProvider;
-
+    private readonly INotificationService _notificationService;
+    private readonly IAppLifecycleService _lifecycleService;
     private Timer? _onlineStatusTimer;
 
     [ObservableProperty]
@@ -44,13 +45,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ICommand SendMessageCommand { get; }
     public ICommand SendFileCommand { get; }
     public ICommand RefreshPeersCommand { get; }
+    public ICommand RefreshMessagesCommand { get; }
     public ICommand ToSettingsCommand { get; }
     public MainViewModel(DatabaseService dbService, 
                          FileTransferService fileTransfer,
                          EncryptionService encryption, 
                          NetworkServiceManager networkServiceManager,
                          IFileStorageService fileStorage,
-                         IServiceProvider serviceProvider
+                         IServiceProvider serviceProvider,
+                         INotificationService notificationService,
+                         IAppLifecycleService lifecycleService
         ) 
     {
         _dbService = dbService;
@@ -61,10 +65,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         System.Diagnostics.Debug.WriteLine(RuntimeHelpers.GetHashCode(_networkServiceManager));
         _fileStorage = fileStorage;
         _serviceProvider = serviceProvider;
+        _notificationService = notificationService;
+        _lifecycleService = lifecycleService;
 
         SendMessageCommand = new AsyncRelayCommand(SendMessageAsync);
         SendFileCommand = new AsyncRelayCommand(SendFileAsync);
         RefreshPeersCommand = new AsyncRelayCommand(RefreshPeersAsync);
+        RefreshMessagesCommand = new AsyncRelayCommand(RefreshMessagesAsync);
         ToSettingsCommand = new AsyncRelayCommand(ToSettingsAsync);
 
         // Строго те же подписки, но теперь через единый менеджер
@@ -87,7 +94,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             await UpdateStatus("Loading peers...");
             await LoadPeersAsync();
-
             await UpdateStatus("Starting network services...");
 
             await _networkServiceManager.StartAsync(); // вместо отдельных вызовов
@@ -96,7 +102,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
             System.Diagnostics.Debug.WriteLine("Network init(MVM)...");
             await UpdateStatus($"Online:{await _dbService.GetSetting(SettingsKeys.MulticastAddress)}:" +
                 $"{await _dbService.GetSetting(SettingsKeys.MulticastPort)}," +
-                //$"{await _tcpComm.}" +
                 $"{await _dbService.GetSetting(SettingsKeys.TcpListenPort)}");
         }
         catch (Exception ex)
@@ -127,35 +132,49 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var list = await _dbService.GetAllPeersAsync();
         await (Application.Current?.Dispatcher?.DispatchAsync(() =>
         {
-            Peers.Clear();
+            //Peers.Clear();
             foreach (var peer in list.OrderByDescending(p => p.LastSeen))
                 Peers.Add(peer);
         }) ?? Task.CompletedTask);
     }
-
-    private void OnPeerDiscovered(Peer peer)
+    private async Task LoadMessagesAsync(Peer selectedPeer)
     {
-        Application.Current?.Dispatcher?.DispatchAsync(() =>
+        var list = await _dbService.GetMessagesWithPeerAsync(selectedPeer.PeerId);
+        await (Application.Current?.Dispatcher?.DispatchAsync(() =>
         {
-        var existing = Peers.FirstOrDefault(p => p.IpAddress == peer.IpAddress); // p.PeerId == peer.PeerId);
+            Messages.Clear();
+            foreach (var message in list.OrderBy(p => p.Timestamp))
+                Messages.Add(message);
+        }) ?? Task.CompletedTask);
+    }
+    private async void OnPeerDiscovered(Peer peer)
+    {
+        Application.Current?.Dispatcher?.DispatchAsync(async () =>
+        {
+            var existing = Peers.FirstOrDefault(p => p.IpAddress == peer.IpAddress); // p.PeerId == peer.PeerId);
             if (existing == null)
             {
                 Peers.Add(peer);
             }
             else
             {
-                // Обновляем существующий объект – тогда UI тоже обновится
-                existing.Name = peer.Name;
-                //existing.IpAddress = peer.IpAddress;
-                existing.PeerId = peer.PeerId;
-                existing.TcpPort = peer.TcpPort;
+                if (existing != peer)
+                {
+                    // Обновляем существующий объект – тогда UI тоже обновится
+                    existing.Name = peer.Name;
+                    //existing.IpAddress = peer.IpAddress;
+                    existing.PeerId = peer.PeerId;
+                    existing.TcpPort = peer.TcpPort;
+                }
                 existing.LastSeen = peer.LastSeen;
             }
             // При желании пересортировать список:
             // var sorted = Peers.OrderByDescending(p => p.LastSeen).ToList();
             // Peers.Clear();
             // foreach (var p in sorted) Peers.Add(p);
+            
         });
+        
     }
 
     private async Task OnMessageReceived(Message message)
@@ -163,7 +182,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
         await (Application.Current?.Dispatcher?.DispatchAsync(() =>
         {
             Messages.Add(message);
-            StatusText = $"New message from {message.SenderPeerId}";
+            string peerName = Peers.FirstOrDefault(n => n.PeerId == message.SenderPeerId, new Peer() { Name = "!?" }).Name;
+            StatusText = $"Сообщение от '{peerName}'";
+            // Показываем системное уведомление, если чат с этим пользователем не открыт или приложение свернуто
+            //if (SelectedPeer?.PeerId != message.SenderPeerId)
+            if (!App.IsMainWindowActive)
+            {
+                _notificationService.ShowNotification($"Сообщение от {peerName}", message.Content, message.SenderPeerId);
+            }
         }) ?? Task.CompletedTask);
     }
     private async Task OnFileReceived(Message message)
@@ -173,6 +199,55 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Messages.Add(message);
             StatusText = $"Получен файл: {message.OriginalFileName}";
         }) ?? Task.CompletedTask);
+    }
+    // Этот метод будет вызываться автоматически при изменении свойства SelectedPeer
+    partial void OnSelectedPeerChanged(Peer? value)
+    {
+        if (value != null)
+        {
+            // Запускаем асинхронную загрузку сообщений для выбранного пира
+            _ = LoadMessagesAsync(value);
+
+        }
+        else
+        {
+            // Если пир не выбран (например, сбросили выделение), очищаем чат
+            Application.Current?.Dispatcher?.DispatchAsync(() => Messages.Clear());
+        }
+    }
+
+    public async Task<bool> LoadOlderMessagesAsync()
+    {
+        if (IsBusy) return false;
+
+        IsBusy = true;
+        try
+        {
+            // Запрос к вашему API или БД за старыми сообщениями
+            var oldMessages = await _dbService.GetOlderMessagesAsync(2);
+
+            if (oldMessages != null && oldMessages.Any())
+            {
+                foreach (var msg in oldMessages)
+                {
+                    // При перевернутом CollectionView старые сообщения 
+                    // добавляются именно в КОНЕЦ коллекции
+                    Messages.Insert(0, msg as Message);
+                }
+                return true; // Данные были, пагинация может продолжаться
+            }
+
+            return false; // Данных больше нет, отключаем пагинацию
+        }
+        catch (Exception ex)
+        {
+            // Логирование ошибки
+            return true;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
     private async Task SendMessageAsync()
     {
@@ -211,6 +286,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     private async Task RefreshPeersAsync() => await LoadPeersAsync();
+    private async Task RefreshMessagesAsync() => await LoadMessagesAsync(SelectedPeer);
 
     private async Task ToSettingsAsync()
     {
@@ -229,5 +305,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _networkServiceManager.PeerDiscovered -= OnPeerDiscovered;
         _networkServiceManager.MessageReceived -= OnMessageReceived;
         _networkServiceManager.StopAsync().Wait(); // остановка через менеджер
+    }
+
+    // Пример команды или метода полного выхода
+    public void HardExit()
+    {
+        // Освобождаем ваши сетевые ресурсы (подписки, сокеты)
+        Dispose();
+
+        // Вызываем полное закрытие
+        _lifecycleService.CloseApplication();
     }
 }

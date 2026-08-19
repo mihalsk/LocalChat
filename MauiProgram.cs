@@ -1,10 +1,13 @@
+#if ANDROID
+using LanChat.Platforms.Android.Services;
+#endif
+using LanChat.Services;
+using LanChat.ViewModels;
+using LanChat.Views;
 using LocalChat.Services;
-using LocalChat.ViewModels;
-using LocalChat.Views;
 using Microsoft.Extensions.Logging;
-using Microsoft.Maui.Controls.Compatibility.Hosting;
 
-namespace LocalChat;
+namespace LanChat;
 
 public static class MauiProgram
 {
@@ -24,7 +27,7 @@ public static class MauiProgram
         // Регистрация сервисов
         builder.Services.AddSingleton<NetworkServiceManager>();
 #if ANDROID
-        builder.Services.AddSingleton<Platforms.Android.Services.MulticastLockService>();
+        builder.Services.AddSingleton<MulticastLockService>();
 #endif
         builder.Services.AddSingleton<DatabaseService>();
         builder.Services.AddSingleton<EncryptionService>();
@@ -46,7 +49,7 @@ public static class MauiProgram
         {
             var dbService = provider.GetRequiredService<DatabaseService>();
 #if ANDROID
-            var multicastLockService = provider.GetService<Platforms.Android.Services.MulticastLockService>();
+            var multicastLockService = provider.GetService<MulticastLockService>();
             return new NetworkDiscoveryService(dbService, multicastLockService);
 #else
             return new NetworkDiscoveryService(dbService);
@@ -54,10 +57,13 @@ public static class MauiProgram
         });
 #if ANDROID
         builder.Services.AddSingleton<IFileStorageService, Platforms.Android.Services.FileStorageService>();
+        builder.Services.AddSingleton<IAppLifecycleService, LocalChat.Platforms.Android.AppLifecycleService>();
+        builder.Services.AddSingleton<INotificationService, Platforms.Android.Services.AndroidNotificationService>();
 #elif WINDOWS
         builder.Services.AddSingleton<IFileStorageService, Platforms.Windows.FileStorageService>();
+        builder.Services.AddSingleton<IAppLifecycleService, LocalChat.Platforms.Windows.AppLifecycleService>();
+        builder.Services.AddSingleton<INotificationService, Platforms.Windows.WindowsNotificationService>();
 #endif
-
 #if DEBUG
         builder.Logging.AddDebug();
 #endif

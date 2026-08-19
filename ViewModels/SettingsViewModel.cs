@@ -1,13 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LocalChat.Helpers;
-using LocalChat.Models;
-using LocalChat.Services;
-using LocalChat.Views;
+using LanChat;
+using LanChat.Helpers;
+using LanChat.Models;
+using LanChat.Services;
+using LanChat.Views;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
-namespace LocalChat.ViewModels;
+namespace LanChat.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject, IDisposable
 {

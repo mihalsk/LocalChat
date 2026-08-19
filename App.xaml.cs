@@ -1,8 +1,8 @@
-using LocalChat.Services;
-using LocalChat.ViewModels;
-using LocalChat.Views;
+using LanChat.Services;
+using LanChat.ViewModels;
+using LanChat.Views;
 
-namespace LocalChat;
+namespace LanChat;
 
 public partial class App : Application
 {
@@ -11,7 +11,7 @@ public partial class App : Application
     public static event Action AppActivated;
     public static event Action AppDeactivated;
     public static string PeerId { get; private set; } = string.Empty;
-
+    public static bool IsMainWindowActive { get; private set; }
     public App()
     {
         InitializeComponent();
@@ -52,10 +52,12 @@ public partial class App : Application
 
         window.Activated += (s, e) => {
             AppActivated?.Invoke();
+            IsMainWindowActive = true;
         };
 
         window.Deactivated += (s, e) => {
             AppDeactivated?.Invoke();
+            IsMainWindowActive = false;
         };
 
         return window;

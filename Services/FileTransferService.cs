@@ -1,6 +1,7 @@
-using LocalChat;
-using LocalChat.Models;
-using LocalChat.Services;
+using LanChat;
+using LanChat.Models;
+using LanChat.Services;
+using LanChat.Models;
 
 public class FileTransferService
 {

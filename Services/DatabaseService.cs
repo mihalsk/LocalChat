@@ -1,8 +1,8 @@
-using LocalChat.Helpers;
-using LocalChat.Models;
+using LanChat.Helpers;
+using LanChat.Models;
 using SQLite;
 
-namespace LocalChat.Services;
+namespace LanChat.Services;
 
 public class DatabaseService
 {
@@ -91,4 +91,9 @@ public class DatabaseService
         _database.Table<Message>().Where(m => m.SenderPeerId == peerId || m.RecipientPeerId == peerId).OrderBy(m => m.Timestamp).ToListAsync();
     public Task<int> SaveMessageAsync(Message message) => _database.InsertAsync(message);
     public Task<int> DeleteAllMessagesAsync() => _database.DeleteAllAsync<Message>();
+
+    internal async Task<IEnumerable<object>> GetOlderMessagesAsync(int page)
+    {
+        throw new NotImplementedException();
+    }
 }

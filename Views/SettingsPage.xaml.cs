@@ -1,6 +1,6 @@
-using LocalChat.ViewModels;
+using LanChat.ViewModels;
 
-namespace LocalChat.Views;
+namespace LanChat.Views;
 
 public partial class SettingsPage : ContentPage
 {

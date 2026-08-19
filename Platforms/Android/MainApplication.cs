@@ -1,6 +1,7 @@
 ﻿using Android.App;
 using Android.Runtime;
-namespace LocalChat
+using LanChat;
+namespace LanChat.Platforms.Android
 {
     [Application]
     public class MainApplication : MauiApplication

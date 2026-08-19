@@ -1,11 +1,12 @@
 ﻿#if WINDOWS
-using LocalChat.Services;
+using LanChat.Services;
+using LanChat.Services;
 using Microsoft.Maui.Storage;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LocalChat.Platforms.Windows;
+namespace LanChat.Platforms.Windows;
 
 public class FileStorageService : IFileStorageService
 {

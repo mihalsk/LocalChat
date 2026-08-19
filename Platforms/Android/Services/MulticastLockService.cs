@@ -1,7 +1,7 @@
 ﻿using Android.Net.Wifi;
 using Android.Content;
 
-namespace LocalChat.Platforms.Android.Services;
+namespace LanChat.Platforms.Android.Services;
 
 public class MulticastLockService
 {
@@ -16,7 +16,7 @@ public class MulticastLockService
 
         if (_wifiManager != null)
         {
-            _multicastLock = _wifiManager.CreateMulticastLock("LocalChat.MulticastLock");
+            _multicastLock = _wifiManager.CreateMulticastLock("LanChat.MulticastLock");
             _multicastLock?.SetReferenceCounted(false);
             System.Diagnostics.Debug.WriteLine("(A)Multicast lock created.");
         }

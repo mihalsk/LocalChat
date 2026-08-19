@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.6.11822.322
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalChat", "LocalChat.csproj", "{1B6F70F2-926A-84C2-CB05-0578E94EFB94}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LanChat", "LanChat.csproj", "{1B6F70F2-926A-84C2-CB05-0578E94EFB94}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

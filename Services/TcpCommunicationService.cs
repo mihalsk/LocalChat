@@ -2,10 +2,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using LocalChat.Helpers;
-using LocalChat.Models;
+using LanChat;
+using LanChat.Helpers;
+using LanChat.Models;
 
-namespace LocalChat.Services;
+namespace LanChat.Services;
 
 public class TcpCommunicationService
 {

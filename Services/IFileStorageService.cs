@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LocalChat.Services;
+namespace LanChat.Services;
 
 public interface IFileStorageService
 {
