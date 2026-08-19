@@ -21,8 +21,8 @@ namespace LanChat.WinUI
         public App()
         {
             // Пытаемся зарегистрировать текущий процесс как единственный экземпляр мессенджера
-            var singleInstance = AppInstance.FindOrRegisterForKey("LanChat_SingleInstance_Key");
-            singleInstance.Activated += OnAppInstanceActivated;
+            //var singleInstance = AppInstance.FindOrRegisterForKey("LanChat_SingleInstance_Key");
+            //singleInstance.Activated += OnAppInstanceActivated;
             this.InitializeComponent();
 
             // Регистрируем менеджер уведомлений
